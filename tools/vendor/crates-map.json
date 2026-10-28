@@ -297,13 +297,20 @@
     "tag": "v0.1.9"
   },
   "fastrand": "redox-os/fastrand",
+  "fdeflate": {
+    "repo": "image-rs/fdeflate",
+    "tag": "v0.3.7"
+  },
   "find-msvc-tools": {
     "repo": "rust-lang/cc-rs",
     "subdir": "find-msvc-tools",
     "tag": "find-msvc-tools-v0.1.15"
   },
   "fixedbitset": "petgraph/fixedbitset",
-  "flate2": "rust-lang/flate2-rs",
+  "flate2": {
+    "repo": "rust-lang/flate2-rs",
+    "tag": "1.1.10"
+  },
   "foldhash": {
     "repo": "orlp/foldhash",
     "tag": "v0.2.0"
@@ -327,6 +334,7 @@
     "repo": "rust-lang/futures-rs",
     "tag": "0.3.34"
   },
+  "futures-intrusive": "oscartackman/futures-intrusive",
   "futures-io": "rust-lang/futures-rs",
   "futures-macro": "rust-lang/futures-rs",
   "futures-sink": "rust-lang/futures-rs",
@@ -448,6 +456,10 @@
     "repo": "rust-lang/jobserver-rs",
     "tag": "0.1.35"
   },
+  "jpeg-decoder": {
+    "repo": "image-rs/jpeg-decoder",
+    "tag": "v0.3.1"
+  },
   "js-sys": {
     "repo": "rustwasm/wasm-bindgen",
     "tag": "0.2.129"
@@ -486,6 +498,8 @@
     "repo": "aosp-mirror-neo/platform_external_rust_crates_libsqlite3-sys",
     "tag": "4f346279844acd466a1e91bfc88c444ad73b7dd4"
   },
+  "libz-rs": "trifectatechfoundation/zlib-rs",
+  "libz-rs-sys": "trifectatechfoundation/zlib-rs",
   "linux-raw-sys": {
     "repo": "sunfishcode/linux-raw-sys",
     "tag": "v0.12.1"
@@ -528,7 +542,7 @@
   },
   "miniz_oxide": {
     "repo": "Frommi/miniz_oxide",
-    "tag": "0.9.0"
+    "tag": "0.8.9"
   },
   "mio": {
     "repo": "tokio-rs/mio",
@@ -746,6 +760,10 @@
     "repo": "rust-lang/pkg-config-rs",
     "tag": "0.3.34"
   },
+  "png": {
+    "repo": "image-rs/image-png",
+    "tag": "v0.17.16"
+  },
   "polling": {
     "repo": "smol-rs/polling",
     "tag": "v3.11.0"
@@ -820,6 +838,7 @@
   "region": "bytecodealliance/wasmtime",
   "renderdoc": "ebkalderon/renderdoc-rs",
   "renderdoc-sys": "ebkalderon/renderdoc-rs",
+  "rgb": "zowens/colorful",
   "rusqlite": {
     "repo": "rusqlite/rusqlite",
     "tag": "v0.32.0"
@@ -1327,6 +1346,10 @@
     "repo": "google/zerocopy",
     "subdir": "zerocopy/zerocopy-derive",
     "tag": "v0.8.63"
+  },
+  "zlib-rs": {
+    "repo": "trifectatechfoundation/zlib-rs",
+    "tag": "v0.6.8"
   },
   "zmij": {
     "repo": "dtolnay/zmij",

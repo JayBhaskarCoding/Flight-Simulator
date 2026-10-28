@@ -28,6 +28,9 @@ pub const TRANS_H: usize = 64;
 pub const SKY_VIEW_W: usize = 32;
 pub const SKY_VIEW_H: usize = 32;
 /// Aerial-perspective LUT dimensions.
+/// Aerial-perspective distance range covered by [`SkyLuts`], metres.
+pub const AERIAL_MAX_DIST_M: f64 = 80_000.0;
+
 pub const AERIAL_DIST: usize = 16;
 pub const AERIAL_ZEN: usize = 16;
 
@@ -240,6 +243,25 @@ impl SkyLuts {
     /// The parameters these LUTs were built with.
     pub fn params(&self) -> &SkyParams {
         &self.params
+    }
+
+    /// Raw transmittance grid, row-major `[altitude][mu]` of RGB
+    /// transmittances (`TRANS_H` rows × `TRANS_W` columns).
+    pub fn transmittance_grid(&self) -> &[[f32; 3]] {
+        &self.transmittance
+    }
+
+    /// Raw sky-view radiance grid, row-major `[zenith][azimuth]` of
+    /// RGBA values with `a = 1` (`SKY_VIEW_H` × `SKY_VIEW_W`).
+    pub fn sky_view_grid(&self) -> &[[f32; 4]] {
+        &self.sky_view
+    }
+
+    /// Raw aerial-perspective grid, `[distance][zenith]` (index
+    /// `zenith * AERIAL_DIST + distance`) of `(transmittance, radiance)`
+    /// RGB pairs.
+    pub fn aerial_grid(&self) -> &[([f32; 3], [f32; 3])] {
+        &self.aerial
     }
 
     fn build_transmittance(params: &SkyParams) -> Vec<[f32; 3]> {
@@ -527,7 +549,7 @@ impl SkyLuts {
     /// Aerial perspective along a view ray: total path transmittance and
     /// in-scattered radiance for a path of `distance_m` at `cos_zenith`.
     pub fn aerial_perspective(&self, distance_m: f64, cos_zenith: f64) -> ([f64; 3], [f64; 3]) {
-        let max_dist = 80_000.0f64;
+        let max_dist = AERIAL_MAX_DIST_M;
         let d = distance_m.clamp(0.0, max_dist);
         let v = (d / max_dist * AERIAL_DIST as f64 - 0.5).clamp(0.0, (AERIAL_DIST - 1) as f64);
         let theta = cos_zenith.clamp(-1.0, 1.0).acos();
