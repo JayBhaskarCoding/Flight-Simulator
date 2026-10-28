@@ -1,0 +1,14 @@
+[package]
+name = "sim-world"
+description = "Async terrain tile streamer, SQLite rolling cache, DEM and OSM data services"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+glam.workspace = true
+sim-geo = { path = "../sim-geo" }
+tokio.workspace = true
+rusqlite.workspace = true

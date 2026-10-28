@@ -1,0 +1,1004 @@
+{
+  "addr2line": {
+    "repo": "gimli-rs/addr2line",
+    "tag": "v0.27.1"
+  },
+  "adler": "fniephaus/adler",
+  "adler2": "fniephaus/adler2",
+  "ahash": {
+    "repo": "tkaitchuck/aHash",
+    "tag": "v0.8.12"
+  },
+  "aho-corasick": "BurntSushi/aho-corasick",
+  "android-activity": {
+    "repo": "rust-mobile/android-activity",
+    "tag": "v0.6.1"
+  },
+  "anyhow": {
+    "repo": "dtolnay/anyhow",
+    "tag": "1.0.104"
+  },
+  "ar_archive_writer": {
+    "repo": "rust-lang/ar_archive_writer",
+    "tag": "v0.5.3"
+  },
+  "arbitrary": {
+    "repo": "rust-fuzz/arbitrary",
+    "tag": "v1.5.0"
+  },
+  "arrayvec": {
+    "repo": "bluss/arrayvec",
+    "tag": "0.7.8"
+  },
+  "as-raw-xcb-connection": {
+    "repo": "psychon/as-raw-xcb-connection",
+    "tag": "v1.0.1"
+  },
+  "ash": "gfx-rs/ash",
+  "async-channel": "smol-rs/async-channel",
+  "async-io": "smol-rs/async-io",
+  "async-task": "smol-rs/async-task",
+  "atomic-waker": {
+    "repo": "smol-rs/atomic-waker",
+    "tag": "v1.1.2"
+  },
+  "autocfg": "rust-lang/autocfg",
+  "backtrace": {
+    "repo": "rust-lang/backtrace-rs",
+    "tag": "backtrace-v0.3.77"
+  },
+  "bit-set": "contain-rs/bit-vec",
+  "bit-vec": "makepad/makepad",
+  "bitflags": {
+    "repo": "bitflags/bitflags",
+    "tag": "2.13.2"
+  },
+  "block2": {
+    "repo": "madsmtm/objc2",
+    "tag": "objc2-0.5.3"
+  },
+  "bumpalo": {
+    "repo": "fitzgen/bumpalo",
+    "tag": "v3.20.3"
+  },
+  "bytemuck": {
+    "repo": "Lokathor/bytemuck",
+    "tag": "v1.25.2"
+  },
+  "bytemuck_derive": "Lokathor/bytemuck",
+  "bytes": {
+    "repo": "tokio-rs/bytes",
+    "tag": "v1.12.1"
+  },
+  "calloop": {
+    "repo": "Smithay/calloop",
+    "tag": "v0.13.0"
+  },
+  "calloop-poll": "Smithay/calloop",
+  "calloop-wayland-source": {
+    "repo": "Smithay/calloop-wayland-source",
+    "tag": "v0.3.0"
+  },
+  "cc": {
+    "repo": "rust-lang/cc-rs",
+    "tag": "cc-v1.10.0"
+  },
+  "cfg-if": {
+    "repo": "rust-lang/cfg-if",
+    "tag": "v1.0.5"
+  },
+  "cfg_aliases": {
+    "repo": "katharostech/cfg_aliases",
+    "tag": "v0.2.2"
+  },
+  "cobs": {
+    "repo": "jamesmunns/cobs.rs",
+    "tag": "v0.3.0"
+  },
+  "concurrent-queue": {
+    "repo": "smol-rs/concurrent-queue",
+    "tag": "v2.5.0"
+  },
+  "console_error_panic_hook": "rustwasm/console_error_panic_hook",
+  "core-foundation": {
+    "repo": "servo/core-foundation-rs",
+    "tag": "core-foundation-v0.9.4"
+  },
+  "core-foundation-sys": {
+    "repo": "servo/core-foundation-rs",
+    "tag": "core-foundation-sys-v0.8.7"
+  },
+  "core-graphics": {
+    "repo": "servo/core-foundation-rs",
+    "tag": "core-graphics-v0.23.1"
+  },
+  "core-graphics-types": {
+    "repo": "servo/core-foundation-rs",
+    "tag": "core-graphics-types-v0.1.3"
+  },
+  "core-text": "servo/core-foundation-rs",
+  "cranelift-assembler-meta": "bytecodealliance/cranelift",
+  "cranelift-assembler-x64": "bytecodealliance/cranelift",
+  "cranelift-bforest": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/bforest",
+    "tag": "v24.0.13"
+  },
+  "cranelift-bitset": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/bitset",
+    "tag": "v24.0.13"
+  },
+  "cranelift-codegen": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/codegen",
+    "tag": "v24.0.13"
+  },
+  "cranelift-codegen-meta": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/codegen/meta",
+    "tag": "v24.0.13"
+  },
+  "cranelift-codegen-shared": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/codegen/shared",
+    "tag": "v24.0.13"
+  },
+  "cranelift-control": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/control",
+    "tag": "v24.0.13"
+  },
+  "cranelift-egraph": "bytecodealliance/cranelift",
+  "cranelift-entity": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/entity",
+    "tag": "v24.0.13"
+  },
+  "cranelift-filetests": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/filetests"
+  },
+  "cranelift-frontend": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/frontend",
+    "tag": "v24.0.13"
+  },
+  "cranelift-fuzzgen": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/fuzzgen"
+  },
+  "cranelift-interpreter": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/interpreter"
+  },
+  "cranelift-isle": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/isle/isle",
+    "tag": "v24.0.13"
+  },
+  "cranelift-jit": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/jit"
+  },
+  "cranelift-module": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/module"
+  },
+  "cranelift-native": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/native",
+    "tag": "v24.0.13"
+  },
+  "cranelift-reader": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/reader"
+  },
+  "cranelift-serde": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/serde"
+  },
+  "cranelift-umbrella": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/umbrella"
+  },
+  "cranelift-wasm": {
+    "repo": "bytecodealliance/wasmtime",
+    "subdir": "cranelift/wasm",
+    "tag": "v24.0.13"
+  },
+  "crc32fast": {
+    "repo": "srijs/rust-crc32fast",
+    "tag": "v1.5.3"
+  },
+  "crossbeam": "crossbeam-rs/crossbeam",
+  "crossbeam-channel": "crossbeam-rs/crossbeam",
+  "crossbeam-deque": "crossbeam-rs/crossbeam",
+  "crossbeam-epoch": "crossbeam-rs/crossbeam",
+  "crossbeam-queue": "crossbeam-rs/crossbeam",
+  "crossbeam-utils": {
+    "repo": "crossbeam-rs/crossbeam",
+    "tag": "crossbeam-utils-0.8.23"
+  },
+  "cursor-icon": {
+    "repo": "rust-windowing/cursor-icon",
+    "tag": "v1.2.0"
+  },
+  "deque": "crossbeam-rs/crossbeam",
+  "derive_arbitrary": "rust-fuzz/arbitrary",
+  "dispatch": "drewcrawford/dispatchr",
+  "dispatch2": "madsmtm/objc2",
+  "dlib": {
+    "repo": "Smithay/dlib",
+    "tag": "v0.5.2"
+  },
+  "document-features": {
+    "repo": "slint-ui/document-features",
+    "tag": "v0.2.12"
+  },
+  "downcast-rs": {
+    "repo": "marcianx/downcast-rs",
+    "tag": "v1.2.1"
+  },
+  "dpi": {
+    "repo": "rust-windowing/winit",
+    "subdir": "dpi",
+    "tag": "dpi_v0.1.2"
+  },
+  "either": {
+    "repo": "bluss/either",
+    "tag": "1.19.0"
+  },
+  "embedded-io": {
+    "repo": "rust-embedded/embedded-hal",
+    "subdir": "embedded-io",
+    "tag": "embedded-io-adapters-v0.6.2"
+  },
+  "equivalent": {
+    "repo": "indexmap-rs/equivalent",
+    "tag": "v1.0.3"
+  },
+  "errno": {
+    "repo": "lambda-fairy/rust-errno",
+    "tag": "v0.3.13"
+  },
+  "event-listener": "smol-rs/event-listener",
+  "event-listener-strategy": "smol-rs/event-listener",
+  "fallible-iterator": {
+    "repo": "sfackler/rust-fallible-iterator",
+    "tag": "v0.3.0"
+  },
+  "fallible-streaming-iterator": {
+    "repo": "sfackler/fallible-streaming-iterator",
+    "tag": "v0.1.9"
+  },
+  "fastrand": "redox-os/fastrand",
+  "find-msvc-tools": {
+    "repo": "rust-lang/cc-rs",
+    "subdir": "find-msvc-tools",
+    "tag": "find-msvc-tools-v0.1.15"
+  },
+  "fixedbitset": "petgraph/fixedbitset",
+  "flate2": "rust-lang/flate2-rs",
+  "foldhash": {
+    "repo": "orlp/foldhash",
+    "tag": "v0.1.5"
+  },
+  "foreign-types": "sfackler/rust-foreign-types",
+  "foreign-types-shared": "sfackler/rust-foreign-types",
+  "form_urlencoded": "servo/rust-url",
+  "futures": "rust-lang/futures-rs",
+  "futures-channel": "rust-lang/futures-rs",
+  "futures-core": "rust-lang/futures-rs",
+  "futures-io": "rust-lang/futures-rs",
+  "futures-macro": "rust-lang/futures-rs",
+  "futures-sink": "rust-lang/futures-rs",
+  "futures-task": "rust-lang/futures-rs",
+  "futures-util": {
+    "repo": "rust-lang/futures-rs",
+    "tag": "0.3.34"
+  },
+  "getrandom": {
+    "repo": "rust-random/getrandom",
+    "tag": "v0.3.4"
+  },
+  "gimli": {
+    "repo": "gimli-rs/gimli",
+    "tag": "0.29.0"
+  },
+  "glam": {
+    "repo": "bitshifter/glam-rs",
+    "tag": "0.30.10"
+  },
+  "gpu-descriptor": "gfx-rs/gpu-descriptor",
+  "half": "starkat99/half-rs",
+  "hashbrown": {
+    "repo": "rust-lang/hashbrown",
+    "tag": "v0.13.2"
+  },
+  "hashlink": {
+    "repo": "djc/hashlink",
+    "tag": "v0.9.1"
+  },
+  "heck": {
+    "repo": "withoutboats/heck",
+    "tag": "76a8274f948fbe3551413dc09026b733aca71995"
+  },
+  "id-arena": {
+    "repo": "fitzgen/id-arena",
+    "tag": "2.2.1"
+  },
+  "idna": "servo/rust-url",
+  "indexmap": {
+    "repo": "indexmap-rs/indexmap",
+    "tag": "2.14.2"
+  },
+  "itertools": {
+    "repo": "rust-itertools/itertools",
+    "tag": "v0.12.1"
+  },
+  "itoa": {
+    "repo": "dtolnay/itoa",
+    "tag": "1.0.18"
+  },
+  "jni": {
+    "repo": "jni-rs/jni-rs",
+    "tag": "v0.22.4"
+  },
+  "jni-sys": {
+    "repo": "jni-rs/jni-sys",
+    "tag": "v0.3.1"
+  },
+  "js-sys": "rustwasm/wasm-bindgen",
+  "leb128": {
+    "repo": "gimli-rs/leb128",
+    "tag": "0.2.7"
+  },
+  "leb128fmt": {
+    "repo": "bluk/leb128fmt",
+    "tag": "v0.1.0"
+  },
+  "libc": {
+    "repo": "rust-lang/libc",
+    "tag": "0.2.191"
+  },
+  "libloading": {
+    "repo": "nagisa/rust_libloading",
+    "tag": "0.8.9"
+  },
+  "libm": {
+    "repo": "rust-lang/libm",
+    "tag": "rewritten-libm-v0.2.11"
+  },
+  "libredox": "redox-os/libredox",
+  "libredox-hook": "redox-os/libredox-hook",
+  "libsqlite3-sys": {
+    "repo": "aosp-mirror-neo/platform_external_rust_crates_libsqlite3-sys",
+    "tag": "4f346279844acd466a1e91bfc88c444ad73b7dd4"
+  },
+  "linux-raw-sys": {
+    "repo": "sunfishcode/linux-raw-sys",
+    "tag": "v0.12.1"
+  },
+  "litrs": {
+    "repo": "LukasKalbertodt/litrs",
+    "tag": "v1.0.1"
+  },
+  "lock_api": {
+    "repo": "Amanieu/parking_lot",
+    "tag": "lock_api-v0.4.14"
+  },
+  "log": {
+    "repo": "rust-lang/log",
+    "tag": "0.4.34"
+  },
+  "mach2": {
+    "repo": "JohnTitor/mach2",
+    "tag": "0.4.3"
+  },
+  "memchr": {
+    "repo": "BurntSushi/memchr",
+    "tag": "2.8.3"
+  },
+  "memfd": {
+    "repo": "lucab/memfd-rs",
+    "tag": "v0.6.6"
+  },
+  "memmap2": {
+    "repo": "RazrFalcon/memmap2-rs",
+    "tag": "v0.9.12"
+  },
+  "metal": {
+    "repo": "gfx-rs/metal-rs",
+    "tag": "v0.31.0"
+  },
+  "miniz_oxide": {
+    "repo": "Frommi/miniz_oxide",
+    "tag": "0.9.0"
+  },
+  "mio": {
+    "repo": "tokio-rs/mio",
+    "tag": "v1.2.4"
+  },
+  "naga": {
+    "repo": "gfx-rs/wgpu",
+    "subdir": "naga",
+    "tag": "naga-v24.0.0"
+  },
+  "ndk": {
+    "repo": "rust-mobile/ndk",
+    "tag": "ndk-0.9.0"
+  },
+  "ndk-context": {
+    "repo": "rust-mobile/ndk-context",
+    "tag": "0eb252bf2306f6ca477430a35e88298e634c0b24"
+  },
+  "ndk-sys": {
+    "repo": "rust-mobile/ndk",
+    "tag": "ndk-sys-0.6.0"
+  },
+  "num_enum": {
+    "repo": "illicitonion/num_enum",
+    "tag": "0.7.6"
+  },
+  "num_enum_derive": "illicitonion/num_enum",
+  "objc": {
+    "repo": "SSheldon/rust-objc",
+    "tag": "0.2.7"
+  },
+  "objc-exception": "SSheldon/rust-objc",
+  "objc-sys": {
+    "repo": "madsmtm/objc2",
+    "tag": "objc-sys-0.3.5"
+  },
+  "objc2": {
+    "repo": "madsmtm/objc2",
+    "tag": "objc2-0.5.3"
+  },
+  "objc2-app-kit": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-cloud-kit": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-core-foundation": "madsmtm/objc2",
+  "objc2-core-graphics": "madsmtm/objc2",
+  "objc2-core-image": "madsmtm/objc2",
+  "objc2-core-location": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-core-text": "madsmtm/objc2",
+  "objc2-encode": {
+    "repo": "madsmtm/objc2",
+    "tag": "objc2-encode-4.1.0"
+  },
+  "objc2-exception": "madsmtm/objc2",
+  "objc2-foundation": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-game-controller": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-metal-kit": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-proc-macros": "madsmtm/objc2",
+  "objc2-quartz-core": "madsmtm/objc2",
+  "objc2-store-kit": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-symbols": "madsmtm/objc2",
+  "objc2-ui-kit": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-uniform-type-identifiers": "madsmtm/objc2",
+  "objc2-web-kit": "madsmtm/objc2",
+  "object": {
+    "repo": "gimli-rs/object",
+    "tag": "v0.39.1"
+  },
+  "once_cell": {
+    "repo": "matklad/once_cell",
+    "tag": "v1.21.4"
+  },
+  "orbclient": {
+    "repo": "redox-os/orbclient",
+    "tag": "0.3.55"
+  },
+  "owo-colors": "onaut/owo-colors",
+  "parking_lot": {
+    "repo": "Amanieu/parking_lot",
+    "tag": "parking_lot-v0.12.5"
+  },
+  "parking_lot_core": {
+    "repo": "Amanieu/parking_lot",
+    "tag": "parking_lot_core-v0.9.12"
+  },
+  "paste": {
+    "repo": "dtolnay/paste",
+    "tag": "1.0.15"
+  },
+  "percent-encoding": {
+    "repo": "servo/rust-url",
+    "tag": "v2.5.8"
+  },
+  "pin-project": {
+    "repo": "taiki-e/pin-project",
+    "tag": "v1.1.13"
+  },
+  "pin-project-internal": {
+    "repo": "taiki-e/pin-project",
+    "tag": "v1.1.13"
+  },
+  "pin-project-lite": {
+    "repo": "taiki-e/pin-project-lite",
+    "tag": "v0.2.17"
+  },
+  "pkg-config": {
+    "repo": "rust-lang/pkg-config-rs",
+    "tag": "0.3.34"
+  },
+  "polling": {
+    "repo": "smol-rs/polling",
+    "tag": "v3.11.0"
+  },
+  "portable-atomic": "taiki-e/portable-atomic",
+  "postcard": {
+    "repo": "jamesmunns/postcard",
+    "tag": "postcard/v1.1.3"
+  },
+  "postcard-derive": "jamesmunns/postcard",
+  "proc-macro2": {
+    "repo": "dtolnay/proc-macro2",
+    "tag": "1.0.107"
+  },
+  "profiling": {
+    "repo": "aclysma/profiling",
+    "tag": "v1.0.16"
+  },
+  "psm": {
+    "repo": "rust-lang/stacker",
+    "subdir": "psm",
+    "tag": "psm-0.1.32"
+  },
+  "pulley": "bytecodealliance/wasmtime",
+  "pulley-derive": "bytecodealliance/wasmtime",
+  "quick-xml": "taiki-e/quick-xml",
+  "quote": {
+    "repo": "dtolnay/quote",
+    "tag": "1.0.47"
+  },
+  "rand": "rust-random/rand",
+  "rand_core": "rust-random/rand",
+  "range-alloc": "gfx-rs/range-alloc",
+  "raw-window-handle": {
+    "repo": "rust-windowing/raw-window-handle",
+    "tag": "v0.6.2"
+  },
+  "redox_syscall": {
+    "repo": "redox-os/syscall",
+    "tag": "0.4.1"
+  },
+  "redox_users": "redox-os/users",
+  "regalloc2": {
+    "repo": "bytecodealliance/regalloc2",
+    "tag": "v0.9.4"
+  },
+  "regex": "rust-lang/regex",
+  "regex-automata": "rust-lang/regex",
+  "regex-automata-impl": "rust-lang/regex",
+  "regex-syntax": "rust-lang/regex",
+  "region": "bytecodealliance/wasmtime",
+  "renderdoc": "ebkalderon/renderdoc-rs",
+  "renderdoc-sys": "ebkalderon/renderdoc-rs",
+  "rusqlite": {
+    "repo": "rusqlite/rusqlite",
+    "tag": "v0.32.0"
+  },
+  "rustc-demangle": {
+    "repo": "rust-lang/rustc-demangle",
+    "tag": "rustc-demangle-v0.1.28"
+  },
+  "rustc-hash": {
+    "repo": "rust-lang/rustc-hash",
+    "tag": "v1.2.0"
+  },
+  "rustix": {
+    "repo": "bytecodealliance/rustix",
+    "tag": "v1.1.6"
+  },
+  "rustversion": {
+    "repo": "dtolnay/rustversion",
+    "tag": "1.0.23"
+  },
+  "ryu": "dtolnay/ryu",
+  "ryu-js": "dtolnay/ryu",
+  "scoped-tls": {
+    "repo": "alexcrichton/scoped-tls",
+    "tag": "1.0.1"
+  },
+  "scopeguard": "mvdnes/scopeguard",
+  "semver": {
+    "repo": "dtolnay/semver",
+    "tag": "1.0.28"
+  },
+  "serde": {
+    "repo": "serde-rs/serde",
+    "tag": "v1.0.229"
+  },
+  "serde_core": {
+    "repo": "serde-rs/serde",
+    "tag": "v1.0.229"
+  },
+  "serde_derive": {
+    "repo": "serde-rs/serde",
+    "tag": "v1.0.229"
+  },
+  "serde_derive_internals": "serde-rs/serde",
+  "serde_json": {
+    "repo": "serde-rs/json",
+    "tag": "v1.0.154"
+  },
+  "shlex": {
+    "repo": "comex/rust-shlex",
+    "tag": "653936e120cdd0a8d1b4f0837e2cce0f347da4c0"
+  },
+  "signal-hook-registry": "rust-lang/signal-hook-registry",
+  "slab": {
+    "repo": "tokio-rs/slab",
+    "tag": "v0.4.12"
+  },
+  "slice-group-by": {
+    "repo": "Kerollmops/slice-group-by",
+    "tag": "v0.3.1"
+  },
+  "slotmap": "orium/slotmap",
+  "smallvec": {
+    "repo": "servo/rust-smallvec",
+    "tag": "v1.16.4"
+  },
+  "smithay-client-toolkit": {
+    "repo": "Smithay/client-toolkit",
+    "tag": "v0.19.2"
+  },
+  "smol_str": {
+    "repo": "rust-analyzer/smol_str",
+    "tag": "v0.2.2"
+  },
+  "socket2": {
+    "repo": "rust-lang/socket2",
+    "tag": "v0.5.7"
+  },
+  "sptr": {
+    "repo": "Gankra/sptr",
+    "tag": "v0.3.2"
+  },
+  "stable_deref_trait": {
+    "repo": "Storyyeller/stable_deref_trait",
+    "tag": "1.2.0"
+  },
+  "static_assertions": {
+    "repo": "nvzqz/static-assertions",
+    "tag": "v1.1.0"
+  },
+  "syn": {
+    "repo": "dtolnay/syn",
+    "tag": "3.0.9"
+  },
+  "target-lexicon": {
+    "repo": "bytecodealliance/target-lexicon",
+    "tag": "v0.12.16"
+  },
+  "termcolor": {
+    "repo": "BurntSushi/termcolor",
+    "tag": "1.4.1"
+  },
+  "thiserror": {
+    "repo": "dtolnay/thiserror",
+    "tag": "1.0.69"
+  },
+  "thiserror-impl": {
+    "repo": "dtolnay/thiserror",
+    "tag": "1.0.69"
+  },
+  "tokio": {
+    "repo": "tokio-rs/tokio",
+    "tag": "tokio-1.44.2"
+  },
+  "tokio-macros": {
+    "repo": "tokio-rs/tokio",
+    "subdir": "tokio-macros",
+    "tag": "tokio-macros-2.5.0"
+  },
+  "tracing": {
+    "repo": "tokio-rs/tracing",
+    "tag": "tracing-0.1.44"
+  },
+  "tracing-attributes": "tokio-rs/tracing",
+  "tracing-core": {
+    "repo": "tokio-rs/tracing",
+    "tag": "tracing-core-0.1.36"
+  },
+  "typed-arena": "nnethercote/typed-arena",
+  "unarray": "dtolnay/unarray",
+  "unicode-ident": {
+    "repo": "dtolnay/unicode-ident",
+    "tag": "1.0.27"
+  },
+  "unicode-segmentation": {
+    "repo": "unicode-rs/unicode-segmentation",
+    "tag": "v1.13.13"
+  },
+  "unicode-width": {
+    "repo": "unicode-rs/unicode-width",
+    "tag": "v0.2.3"
+  },
+  "unicode-xid": {
+    "repo": "unicode-rs/unicode-xid",
+    "tag": "v0.2.6"
+  },
+  "url": "servo/rust-url",
+  "vcpkg": {
+    "repo": "mcgoo/vcpkg-rs",
+    "tag": "vcpkg-rs-0.2.15"
+  },
+  "version_check": {
+    "repo": "SergioBenitez/version_check",
+    "tag": "v0.9.5"
+  },
+  "wasi": {
+    "repo": "bytecodealliance/wasi",
+    "tag": "0.11.1"
+  },
+  "wasm-bindgen": {
+    "repo": "rustwasm/wasm-bindgen",
+    "tag": "0.2.129"
+  },
+  "wasm-bindgen-backend": "rustwasm/wasm-bindgen",
+  "wasm-bindgen-futures": "rustwasm/wasm-bindgen",
+  "wasm-bindgen-macro": {
+    "repo": "rustwasm/wasm-bindgen",
+    "tag": "0.2.129"
+  },
+  "wasm-bindgen-macro-support": "rustwasm/wasm-bindgen",
+  "wasm-bindgen-shared": {
+    "repo": "rustwasm/wasm-bindgen",
+    "tag": "0.2.129"
+  },
+  "wasm-encoder": {
+    "repo": "bytecodealliance/wasm-tools",
+    "tag": "v1.262.0"
+  },
+  "wasm-metadata": "bytecodealliance/wasm-tools",
+  "wasmi": "wasmi-labs/wasmi",
+  "wasmparser": {
+    "repo": "bytecodealliance/wasm-tools",
+    "tag": "v1.262.0"
+  },
+  "wasmprinter": {
+    "repo": "bytecodealliance/wasm-tools",
+    "tag": "v1.215.0"
+  },
+  "wasmtime": {
+    "repo": "bytecodealliance/wasmtime",
+    "tag": "v24.0.13"
+  },
+  "wasmtime-asm-macros": {
+    "repo": "bytecodealliance/wasmtime",
+    "tag": "v24.0.13"
+  },
+  "wasmtime-cache": "bytecodealliance/wasmtime",
+  "wasmtime-compiler": "bytecodealliance/wasmtime",
+  "wasmtime-component-macro": {
+    "repo": "bytecodealliance/wasmtime",
+    "tag": "v24.0.13"
+  },
+  "wasmtime-component-util": {
+    "repo": "bytecodealliance/wasmtime",
+    "tag": "v24.0.13"
+  },
+  "wasmtime-cranelift": {
+    "repo": "bytecodealliance/wasmtime",
+    "tag": "v24.0.13"
+  },
+  "wasmtime-environ": {
+    "repo": "bytecodealliance/wasmtime",
+    "tag": "v24.0.13"
+  },
+  "wasmtime-fiber": "bytecodealliance/wasmtime",
+  "wasmtime-icu": "bytecodealliance/wasmtime",
+  "wasmtime-jit": "bytecodealliance/wasmtime",
+  "wasmtime-jit-debug": "bytecodealliance/wasmtime",
+  "wasmtime-jit-icache-coherence": {
+    "repo": "bytecodealliance/wasmtime",
+    "tag": "v24.0.13"
+  },
+  "wasmtime-macros": "bytecodealliance/wasmtime",
+  "wasmtime-runtime": "bytecodealliance/wasmtime",
+  "wasmtime-slab": {
+    "repo": "bytecodealliance/wasmtime",
+    "tag": "v24.0.13"
+  },
+  "wasmtime-types": {
+    "repo": "bytecodealliance/wasmtime",
+    "tag": "v24.0.13"
+  },
+  "wasmtime-versioned-export-macros": {
+    "repo": "bytecodealliance/wasmtime",
+    "tag": "v24.0.13"
+  },
+  "wasmtime-wasi": "bytecodealliance/wasmtime",
+  "wasmtime-wasi-http": "bytecodealliance/wasmtime",
+  "wasmtime-wasi-nn": "bytecodealliance/wasmtime",
+  "wasmtime-winapi": "bytecodealliance/wasmtime",
+  "wasmtime-winch": "bytecodealliance/wasmtime",
+  "wasmtime-wit-bindgen": {
+    "repo": "bytecodealliance/wasmtime",
+    "tag": "v24.0.13"
+  },
+  "wast": {
+    "repo": "bytecodealliance/wasm-tools",
+    "tag": "v1.262.0"
+  },
+  "wat": {
+    "repo": "bytecodealliance/wasm-tools",
+    "tag": "v1.262.0"
+  },
+  "wat-parser": "bytecodealliance/wasm-tools",
+  "wayland-backend": {
+    "repo": "aosp-mirror-neo/platform_external_rust_android-crates-io",
+    "tag": "31206794e1a80afc33ee29f34e36f0bba0e404d0"
+  },
+  "wayland-client": "makepad/makepad",
+  "wayland-codegen": "Smithay/wayland-rs",
+  "wayland-csd-frame": {
+    "repo": "rust-windowing/wayland-csd-frame",
+    "tag": "v0.3.0"
+  },
+  "wayland-cursor": {
+    "repo": "Smithay/wayland-rs",
+    "tag": "wayland-cursor-v0.31"
+  },
+  "wayland-display": "Smithay/wayland-rs",
+  "wayland-protocols": {
+    "repo": "aosp-mirror-neo/platform_external_rust_android-crates-io",
+    "tag": "31206794e1a80afc33ee29f34e36f0bba0e404d0"
+  },
+  "wayland-protocols-wlr": {
+    "repo": "Smithay/wayland-rs",
+    "tag": "wayland-backend-v0.3.3"
+  },
+  "wayland-protocols-wp": "Smithay/wayland-rs",
+  "wayland-rs": "Smithay/wayland-rs",
+  "wayland-scanner": {
+    "repo": "aosp-mirror-neo/platform_external_rust_android-crates-io",
+    "tag": "31206794e1a80afc33ee29f34e36f0bba0e404d0"
+  },
+  "wayland-server": "Smithay/wayland-rs",
+  "wayland-sys": {
+    "repo": "aosp-mirror-neo/platform_external_rust_android-crates-io",
+    "tag": "31206794e1a80afc33ee29f34e36f0bba0e404d0"
+  },
+  "web-sys": "rustwasm/wasm-bindgen",
+  "web-time": {
+    "repo": "daxpedda/web-time",
+    "tag": "v1.1.0"
+  },
+  "wgpu": {
+    "repo": "gfx-rs/wgpu",
+    "tag": "wgpu-v24.0.5"
+  },
+  "wgpu-core": {
+    "repo": "gfx-rs/wgpu",
+    "tag": "wgpu-v24.0.5"
+  },
+  "wgpu-hal": {
+    "repo": "gfx-rs/wgpu",
+    "tag": "wgpu-v24.0.5"
+  },
+  "wgpu-types": {
+    "repo": "gfx-rs/wgpu",
+    "tag": "wgpu-v24.0.5"
+  },
+  "winapi-util": {
+    "repo": "BurntSushi/winapi-util",
+    "tag": "0.1.11"
+  },
+  "windows-link": {
+    "repo": "microsoft/windows-rs",
+    "tag": "73"
+  },
+  "windows-sys": {
+    "repo": "microsoft/windows-rs",
+    "tag": "69"
+  },
+  "windows-targets": {
+    "repo": "microsoft/windows-rs",
+    "tag": "0.52.0"
+  },
+  "windows_aarch64_gnullvm": {
+    "repo": "microsoft/windows-rs",
+    "tag": "0.52.0"
+  },
+  "windows_aarch64_msvc": {
+    "repo": "microsoft/windows-rs",
+    "tag": "0.52.0"
+  },
+  "windows_i686_gnu": {
+    "repo": "microsoft/windows-rs",
+    "tag": "0.52.0"
+  },
+  "windows_i686_gnullvm": "microsoft/windows-rs",
+  "windows_i686_msvc": {
+    "repo": "microsoft/windows-rs",
+    "tag": "0.52.0"
+  },
+  "windows_x86_64_gnu": {
+    "repo": "microsoft/windows-rs",
+    "tag": "0.52.0"
+  },
+  "windows_x86_64_gnullvm": {
+    "repo": "microsoft/windows-rs",
+    "tag": "0.52.0"
+  },
+  "windows_x86_64_msvc": {
+    "repo": "microsoft/windows-rs",
+    "tag": "0.52.0"
+  },
+  "winit": {
+    "repo": "rust-windowing/winit",
+    "tag": "v0.30.13"
+  },
+  "wit-bindgen": "bytecodealliance/wit-bindgen",
+  "wit-bindgen-core": "bytecodealliance/wit-bindgen",
+  "wit-bindgen-rt": "bytecodealliance/wit-bindgen",
+  "wit-bindgen-rust": "bytecodealliance/wit-bindgen",
+  "wit-bindgen-rust-macro": "bytecodealliance/wit-bindgen",
+  "wit-component": "bytecodealliance/wasm-tools",
+  "wit-parser": {
+    "repo": "bytecodealliance/wasm-tools",
+    "tag": "v1.215.0"
+  },
+  "wl-clipboard-rs": "aryaKhosravani/wl-clipboard-rs",
+  "x11-dl": {
+    "repo": "AltF02/x11-rs",
+    "tag": "v2.21.0"
+  },
+  "x11rb": {
+    "repo": "psychon/x11rb",
+    "tag": "v0.13.2"
+  },
+  "x11rb-protocol": {
+    "repo": "psychon/x11rb",
+    "tag": "v0.13.2"
+  },
+  "xkbcommon-dl": {
+    "repo": "rust-windowing/xkbcommon-dl",
+    "tag": "v0.4.2"
+  },
+  "xkeysym": {
+    "repo": "rust-windowing/xkeysym",
+    "tag": "v0.2.1"
+  },
+  "zerocopy": {
+    "repo": "google/zerocopy",
+    "tag": "v0.8.63"
+  },
+  "zerocopy-derive": {
+    "repo": "google/zerocopy",
+    "subdir": "zerocopy/zerocopy-derive",
+    "tag": "v0.8.63"
+  },
+  "zmij": {
+    "repo": "dtolnay/zmij",
+    "tag": "1.0.23"
+  }
+}

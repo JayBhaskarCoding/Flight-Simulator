@@ -1,0 +1,11 @@
+[package]
+name = "sim-atmosphere"
+description = "US Standard Atmosphere 1976, METAR parser, Dryden turbulence, and CPU sky LUTs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+glam.workspace = true

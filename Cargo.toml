@@ -1,0 +1,72 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/sim-geo",
+    "crates/sim-cfg",
+    "crates/sim-atmosphere",
+    "crates/sim-physics",
+    "crates/sim-world",
+    "crates/sim-avionics",
+    "crates/sim-render",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/JayBhaskarCoding/Flight-Simulator"
+description = "OpenMSFS - clean-room open-source flight simulator engine"
+
+# ---------------------------------------------------------------------------
+# Shared dependency versions for the whole workspace.
+# ---------------------------------------------------------------------------
+[workspace.dependencies]
+# --- math / geodesy ---
+glam = "0.30"
+
+# --- async runtime (sim-world tile streamer, sim-avionics services) ---
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "macros",
+    "sync",
+    "time",
+    "fs",
+    "io-util",
+    "net",
+] }
+
+# --- storage (sim-world rolling cache) ---
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# --- rendering (sim-render + open-msfs window) ---
+wgpu = { version = "24", default-features = false, features = [
+    "wgsl",
+    "vulkan-portability",
+    "angle",
+    "dx12",
+    "metal",
+] }
+winit = { version = "0.30", default-features = false, features = ["x11", "wayland"] }
+
+# --- wasm gauge host (sim-avionics) ---
+wasmtime = { version = "24", default-features = false, features = ["cranelift", "wat", "runtime"] }
+
+# --- internal crates ---
+sim-geo = { path = "crates/sim-geo" }
+sim-cfg = { path = "crates/sim-cfg" }
+sim-atmosphere = { path = "crates/sim-atmosphere" }
+sim-physics = { path = "crates/sim-physics" }
+sim-world = { path = "crates/sim-world" }
+sim-avionics = { path = "crates/sim-avionics" }
+sim-render = { path = "crates/sim-render" }
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

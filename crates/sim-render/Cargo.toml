@@ -1,0 +1,17 @@
+[package]
+name = "sim-render"
+description = "wgpu render graph, PBR glTF pipeline, Hillaire atmosphere and volumetric cloud WGSL"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+glam.workspace = true
+sim-geo = { path = "../sim-geo" }
+sim-cfg = { path = "../sim-cfg" }
+sim-atmosphere = { path = "../sim-atmosphere" }
+sim-avionics = { path = "../sim-avionics" }
+wgpu.workspace = true
+winit.workspace = true

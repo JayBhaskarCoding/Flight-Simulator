@@ -1,0 +1,11 @@
+[package]
+name = "sim-geo"
+description = "WGS84 geodesy, ECEF/geodetic/ENU frames, camera-relative floating origin, and a spherical quadtree tile LOD system"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+glam.workspace = true

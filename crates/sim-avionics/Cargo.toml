@@ -1,0 +1,17 @@
+[package]
+name = "sim-avionics"
+description = "SimVar bus, PID autopilot, Wasmtime gauge host and OpenSimConnect TCP server"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+glam.workspace = true
+sim-geo = { path = "../sim-geo" }
+sim-cfg = { path = "../sim-cfg" }
+sim-atmosphere = { path = "../sim-atmosphere" }
+sim-physics = { path = "../sim-physics" }
+tokio.workspace = true
+wasmtime.workspace = true

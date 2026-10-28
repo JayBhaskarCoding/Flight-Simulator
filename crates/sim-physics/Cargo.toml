@@ -1,0 +1,12 @@
+[package]
+name = "sim-physics"
+description = "1000 Hz RK4 6-DOF flight dynamics, surface-element aerodynamics and landing-gear contact"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+glam.workspace = true
+sim-cfg = { path = "../sim-cfg" }
