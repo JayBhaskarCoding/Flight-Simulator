@@ -15,3 +15,12 @@ sim-atmosphere = { path = "../sim-atmosphere" }
 sim-avionics = { path = "../sim-avionics" }
 wgpu.workspace = true
 winit.workspace = true
+
+# winit's wayland backend pulls wayland-sys in eager-link mode, whose
+# build script shells out to pkg-config for libwayland (no system
+# package toolchain exists in this environment). Enable `dlopen` so the
+# build script skips pkg-config entirely and the shared library is only
+# loaded at runtime — the sandbox has no display server either, so the
+# wayland code path never actually dlopens during tests.
+[target.'cfg(all(unix, not(any(target_os = "macos", target_os = "android"))))'.dependencies]
+wayland-sys = { version = "0.31", features = ["dlopen"] }

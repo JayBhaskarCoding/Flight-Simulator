@@ -184,9 +184,37 @@ def importlib_load_vendor():
     return mod
 
 
+def map_recorded_packages() -> list[tuple[str, str, dict]]:
+    """(name, version, record) for every crates-map entry saved with an
+    explicit tag by vendor.py (covers manual installs from before an
+    environment reset)."""
+    out = []
+    for name, raw in MAP.items():
+        if isinstance(raw, dict) and raw.get("tag") and raw.get("repo"):
+            version = raw.get("version")
+            if not version:
+                # derive from saved tag using the same extraction vendor
+                # used: prefer a `v`/`name-` style tag version
+                tag = raw["tag"]
+                import re as _re
+                m = _re.search(r"(\d+(?:\.\d+){0,2})(?!.*\d)", tag)
+                if not m:
+                    continue
+                version = m.group(1)
+                # wasm-tools monorepo style: tag 1.X.Y -> crate 0.X.Y
+                if raw["repo"] == "bytecodealliance/wasm-tools" and version.startswith("1."):
+                    version = "0." + version[2:]
+                # madsmtm frameworks tags: `frameworks-0.2.2`
+                if tag.startswith("frameworks-"):
+                    version = tag.split("-", 1)[1]
+            out.append((name, version, raw))
+    return out
+
+
 def main() -> int:
     pkgs = lock_packages()
-    print(f"lock registry packages: {len(pkgs)}")
+    recorded = {(n, v) for n, v, _ in map_recorded_packages()}
+    print(f"lock registry packages: {len(pkgs)} (+{len(recorded)} recorded maps)")
     failures: list[str] = []
     for name, version in pkgs:
         dest = SOURCES / f"{name}-{version}"
@@ -226,6 +254,27 @@ def main() -> int:
         except Exception as e:  # noqa: BLE001 - collect and report
             failures.append(f"{name} {version}: {e}")
             print(f"[FAIL] {name} {version}: {e}")
+    for name, version, rec in map_recorded_packages():
+        dest = SOURCES / f"{name}-{version}"
+        if (dest / ".cargo-checksum.json").exists():
+            continue
+        if (name, version) in recorded and (name, version) in {(n, v) for n, v in pkgs}:
+            pass  # lock loop already tried it; fall through if it failed
+        cmd = [
+            "python3", str(VENDOR_DIR / "vendor.py"),
+            "--name", name, "--version", version,
+            "--repo", rec["repo"], "--tag", str(rec["tag"]),
+        ]
+        if rec.get("subdir"):
+            cmd += ["--subdir", str(rec["subdir"])]
+        print(f"[map ] {name} {version} <- {rec['repo']}@{rec['tag']}"
+              + (f" ({rec['subdir']})" if rec.get("subdir") else ""))
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.returncode != 0:
+            # recorded records can be stale (repo layout moved); report
+            # but keep going — the resolve loop will find a new source.
+            print(f"       skipped: {(r.stderr or r.stdout).strip().splitlines()[-1][:160] if (r.stderr or r.stdout).strip() else '?'}")
+
     if failures:
         print(f"\n{len(failures)} failures:")
         for f in failures:

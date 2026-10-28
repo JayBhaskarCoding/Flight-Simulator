@@ -14,6 +14,10 @@
     "repo": "rust-mobile/android-activity",
     "tag": "v0.6.1"
   },
+  "android_system_properties": {
+    "repo": "nical/android_system_properties",
+    "tag": "00c55a5a871e3fc6d9b133f96bf6d74c8e1927cf"
+  },
   "anyhow": {
     "repo": "dtolnay/anyhow",
     "tag": "1.0.104"
@@ -34,7 +38,10 @@
     "repo": "psychon/as-raw-xcb-connection",
     "tag": "v1.0.1"
   },
-  "ash": "gfx-rs/ash",
+  "ash": {
+    "repo": "ash-rs/ash",
+    "tag": "0.38.0"
+  },
   "async-channel": "smol-rs/async-channel",
   "async-io": "smol-rs/async-io",
   "async-task": "smol-rs/async-task",
@@ -42,16 +49,22 @@
     "repo": "smol-rs/atomic-waker",
     "tag": "v1.1.2"
   },
-  "autocfg": "rust-lang/autocfg",
+  "autocfg": {
+    "repo": "cuviper/autocfg",
+    "tag": "1.5.1"
+  },
   "backtrace": {
     "repo": "rust-lang/backtrace-rs",
     "tag": "backtrace-v0.3.77"
   },
   "bit-set": "contain-rs/bit-vec",
-  "bit-vec": "makepad/makepad",
+  "bit-vec": {
+    "repo": "makepad/makepad",
+    "tag": "44ecb822b48106fa76bde4dfd309e5a8a7ff1932"
+  },
   "bitflags": {
     "repo": "bitflags/bitflags",
-    "tag": "2.13.2"
+    "tag": "1.3.2"
   },
   "block2": {
     "repo": "madsmtm/objc2",
@@ -65,7 +78,10 @@
     "repo": "Lokathor/bytemuck",
     "tag": "v1.25.2"
   },
-  "bytemuck_derive": "Lokathor/bytemuck",
+  "bytemuck_derive": {
+    "repo": "Lokathor/bytemuck",
+    "tag": "bytemuck_derive-v1.12.1"
+  },
   "bytes": {
     "repo": "tokio-rs/bytes",
     "tag": "v1.12.1"
@@ -95,11 +111,20 @@
     "repo": "jamesmunns/cobs.rs",
     "tag": "v0.3.0"
   },
+  "codespan-reporting": {
+    "repo": "brendanzab/codespan",
+    "tag": "v0.11.1"
+  },
+  "combine": {
+    "repo": "Marwes/combine",
+    "tag": "v4.6.9"
+  },
   "concurrent-queue": {
     "repo": "smol-rs/concurrent-queue",
     "tag": "v2.5.0"
   },
   "console_error_panic_hook": "rustwasm/console_error_panic_hook",
+  "copypasta": "rust-windowing/copypasta",
   "core-foundation": {
     "repo": "servo/core-foundation-rs",
     "tag": "core-foundation-v0.9.4"
@@ -230,7 +255,7 @@
   "dispatch2": "madsmtm/objc2",
   "dlib": {
     "repo": "Smithay/dlib",
-    "tag": "v0.5.2"
+    "tag": "ab1a79fd8b92a331a5f123be9e1dcbbcbd48dbf8"
   },
   "document-features": {
     "repo": "slint-ui/document-features",
@@ -250,9 +275,8 @@
     "tag": "1.19.0"
   },
   "embedded-io": {
-    "repo": "rust-embedded/embedded-hal",
-    "subdir": "embedded-io",
-    "tag": "embedded-io-adapters-v0.6.2"
+    "repo": "embassy-rs/embedded-io",
+    "tag": "v0.4.0"
   },
   "equivalent": {
     "repo": "indexmap-rs/equivalent",
@@ -282,39 +306,97 @@
   "flate2": "rust-lang/flate2-rs",
   "foldhash": {
     "repo": "orlp/foldhash",
-    "tag": "v0.1.5"
+    "tag": "v0.2.0"
   },
-  "foreign-types": "sfackler/rust-foreign-types",
-  "foreign-types-shared": "sfackler/rust-foreign-types",
+  "foreign-types": {
+    "repo": "sfackler/foreign-types",
+    "tag": "v0.5.0"
+  },
+  "foreign-types-macros": {
+    "repo": "sfackler/foreign-types",
+    "tag": "foreign-types-macros-v0.2.4"
+  },
+  "foreign-types-shared": {
+    "repo": "sfackler/foreign-types",
+    "tag": "foreign-types-shared-v0.3.1"
+  },
   "form_urlencoded": "servo/rust-url",
   "futures": "rust-lang/futures-rs",
   "futures-channel": "rust-lang/futures-rs",
-  "futures-core": "rust-lang/futures-rs",
+  "futures-core": {
+    "repo": "rust-lang/futures-rs",
+    "tag": "0.3.34"
+  },
   "futures-io": "rust-lang/futures-rs",
   "futures-macro": "rust-lang/futures-rs",
   "futures-sink": "rust-lang/futures-rs",
-  "futures-task": "rust-lang/futures-rs",
+  "futures-task": {
+    "repo": "rust-lang/futures-rs",
+    "tag": "0.3.34"
+  },
   "futures-util": {
     "repo": "rust-lang/futures-rs",
     "tag": "0.3.34"
   },
   "getrandom": {
     "repo": "rust-random/getrandom",
-    "tag": "v0.3.4"
+    "tag": "v0.4.3"
   },
   "gimli": {
     "repo": "gimli-rs/gimli",
-    "tag": "0.29.0"
+    "tag": "v0.34.0"
+  },
+  "gl_generator": {
+    "repo": "brendanzab/gl-rs",
+    "tag": "gl_generator-v0.14.0"
   },
   "glam": {
     "repo": "bitshifter/glam-rs",
     "tag": "0.30.10"
   },
-  "gpu-descriptor": "gfx-rs/gpu-descriptor",
+  "glow": {
+    "repo": "grovesNL/glow",
+    "tag": "83c7b9b59ec4b26942801b3d0164db6d396a8c74"
+  },
+  "glutin": "rust-windowing/glutin",
+  "glutin_egl_sys": {
+    "repo": "rust-windowing/glutin",
+    "tag": "v0.32.3"
+  },
+  "glutin_glx_sys": {
+    "repo": "rust-windowing/glutin",
+    "tag": "v0.32.3"
+  },
+  "glutin_wgl_sys": {
+    "repo": "rust-windowing/glutin",
+    "tag": "v0.32.3"
+  },
+  "gpu-alloc": {
+    "repo": "zakarumych/gpu-alloc",
+    "subdir": "gpu-alloc",
+    "tag": "200a1ec57a53a573d0fcada9dcb9a79786952267"
+  },
+  "gpu-alloc-types": {
+    "repo": "zakarumych/gpu-alloc",
+    "tag": "200a1ec57a53a573d0fcada9dcb9a79786952267"
+  },
+  "gpu-allocator": {
+    "repo": "Traverse-Research/gpu-allocator",
+    "tag": "0.27.0"
+  },
+  "gpu-descriptor": {
+    "repo": "zakarumych/gpu-descriptor",
+    "subdir": "gpu-descriptor",
+    "tag": "21e6b7526642ebf9abd48548434ba4599bf2190f"
+  },
+  "gpu-descriptor-types": {
+    "repo": "zakarumych/gpu-descriptor",
+    "tag": "21e6b7526642ebf9abd48548434ba4599bf2190f"
+  },
   "half": "starkat99/half-rs",
   "hashbrown": {
     "repo": "rust-lang/hashbrown",
-    "tag": "v0.13.2"
+    "tag": "v0.12.3"
   },
   "hashlink": {
     "repo": "djc/hashlink",
@@ -322,7 +404,11 @@
   },
   "heck": {
     "repo": "withoutboats/heck",
-    "tag": "76a8274f948fbe3551413dc09026b733aca71995"
+    "tag": "252c1906cefefb8d13ecad7fce7b8f27ce6437e0"
+  },
+  "hexf-parse": {
+    "repo": "lifthrasiir/hexf",
+    "tag": "0.2.1"
   },
   "id-arena": {
     "repo": "fitzgen/id-arena",
@@ -331,8 +417,9 @@
   "idna": "servo/rust-url",
   "indexmap": {
     "repo": "indexmap-rs/indexmap",
-    "tag": "2.14.2"
+    "tag": "1.9.3"
   },
+  "inherent": "dtolnay/inherent",
   "itertools": {
     "repo": "rust-itertools/itertools",
     "tag": "v0.12.1"
@@ -345,11 +432,31 @@
     "repo": "jni-rs/jni-rs",
     "tag": "v0.22.4"
   },
+  "jni-macros": {
+    "repo": "jni-rs/jni-rs",
+    "tag": "v0.22.4"
+  },
   "jni-sys": {
     "repo": "jni-rs/jni-sys",
-    "tag": "v0.3.1"
+    "tag": "v0.4.1"
   },
-  "js-sys": "rustwasm/wasm-bindgen",
+  "jni-sys-macros": {
+    "repo": "jni-rs/jni-sys",
+    "tag": "v0.4.1"
+  },
+  "jobserver": {
+    "repo": "rust-lang/jobserver-rs",
+    "tag": "0.1.35"
+  },
+  "js-sys": {
+    "repo": "rustwasm/wasm-bindgen",
+    "tag": "0.2.129"
+  },
+  "khronos-egl": "KhronosGroup/EGL-Registry",
+  "khronos_api": {
+    "repo": "brendanzab/gl-rs",
+    "tag": "khronos_api-v3.1.0"
+  },
   "leb128": {
     "repo": "gimli-rs/leb128",
     "tag": "0.2.7"
@@ -368,9 +475,12 @@
   },
   "libm": {
     "repo": "rust-lang/libm",
-    "tag": "rewritten-libm-v0.2.11"
+    "tag": "libm-v0.2.11"
   },
-  "libredox": "redox-os/libredox",
+  "libredox": {
+    "repo": "redox-unofficial-mirrors/libredox",
+    "tag": "0.1.25"
+  },
   "libredox-hook": "redox-os/libredox-hook",
   "libsqlite3-sys": {
     "repo": "aosp-mirror-neo/platform_external_rust_crates_libsqlite3-sys",
@@ -395,6 +505,10 @@
   "mach2": {
     "repo": "JohnTitor/mach2",
     "tag": "0.4.3"
+  },
+  "malloc_buf": {
+    "repo": "SSheldon/malloc_buf",
+    "tag": "0.0.6"
   },
   "memchr": {
     "repo": "BurntSushi/memchr",
@@ -435,13 +549,28 @@
   },
   "ndk-sys": {
     "repo": "rust-mobile/ndk",
-    "tag": "ndk-sys-0.6.0"
+    "tag": "ndk-sys-0.5.0"
+  },
+  "nix": {
+    "repo": "nix-rust/nix",
+    "tag": "v0.26.4"
+  },
+  "num-bigint": "rust-num/num",
+  "num-integer": "rust-num/num",
+  "num-iter": "rust-num/num",
+  "num-rational": "rust-num/num",
+  "num-traits": {
+    "repo": "rust-num/num-traits",
+    "tag": "num-traits-0.2.19"
   },
   "num_enum": {
     "repo": "illicitonion/num_enum",
     "tag": "0.7.6"
   },
-  "num_enum_derive": "illicitonion/num_enum",
+  "num_enum_derive": {
+    "repo": "illicitonion/num_enum",
+    "tag": "0.7.6"
+  },
   "objc": {
     "repo": "SSheldon/rust-objc",
     "tag": "0.2.7"
@@ -455,7 +584,19 @@
     "repo": "madsmtm/objc2",
     "tag": "objc2-0.5.3"
   },
+  "objc2-accessibility": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
   "objc2-app-kit": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-av-kit": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-call-kit": {
     "repo": "madsmtm/objc2",
     "tag": "frameworks-0.2.2"
   },
@@ -463,9 +604,20 @@
     "repo": "madsmtm/objc2",
     "tag": "frameworks-0.2.2"
   },
+  "objc2-contacts": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-core-data": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
   "objc2-core-foundation": "madsmtm/objc2",
   "objc2-core-graphics": "madsmtm/objc2",
-  "objc2-core-image": "madsmtm/objc2",
+  "objc2-core-image": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
   "objc2-core-location": {
     "repo": "madsmtm/objc2",
     "tag": "frameworks-0.2.2"
@@ -474,6 +626,10 @@
   "objc2-encode": {
     "repo": "madsmtm/objc2",
     "tag": "objc2-encode-4.1.0"
+  },
+  "objc2-event-kit": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
   },
   "objc2-exception": "madsmtm/objc2",
   "objc2-foundation": {
@@ -484,26 +640,66 @@
     "repo": "madsmtm/objc2",
     "tag": "frameworks-0.2.2"
   },
+  "objc2-link-presentation": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-mail-kit": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-media-player": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-metal": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
   "objc2-metal-kit": {
     "repo": "madsmtm/objc2",
     "tag": "frameworks-0.2.2"
   },
+  "objc2-photos": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
   "objc2-proc-macros": "madsmtm/objc2",
-  "objc2-quartz-core": "madsmtm/objc2",
+  "objc2-quartz-core": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-social": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
   "objc2-store-kit": {
     "repo": "madsmtm/objc2",
     "tag": "frameworks-0.2.2"
   },
-  "objc2-symbols": "madsmtm/objc2",
+  "objc2-symbols": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
   "objc2-ui-kit": {
     "repo": "madsmtm/objc2",
     "tag": "frameworks-0.2.2"
   },
-  "objc2-uniform-type-identifiers": "madsmtm/objc2",
-  "objc2-web-kit": "madsmtm/objc2",
+  "objc2-uniform-type-identifiers": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-user-notifications": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
+  "objc2-web-kit": {
+    "repo": "madsmtm/objc2",
+    "tag": "frameworks-0.2.2"
+  },
   "object": {
     "repo": "gimli-rs/object",
-    "tag": "v0.39.1"
+    "tag": "v0.40.0"
   },
   "once_cell": {
     "repo": "matklad/once_cell",
@@ -512,6 +708,10 @@
   "orbclient": {
     "repo": "redox-os/orbclient",
     "tag": "0.3.55"
+  },
+  "ordered-float": {
+    "repo": "reem/rust-ordered-float",
+    "tag": "v3.9.2"
   },
   "owo-colors": "onaut/owo-colors",
   "parking_lot": {
@@ -556,6 +756,14 @@
     "tag": "postcard/v1.1.3"
   },
   "postcard-derive": "jamesmunns/postcard",
+  "presser": {
+    "repo": "EmbarkStudios/presser",
+    "tag": "0.3.1"
+  },
+  "proc-macro-crate": {
+    "repo": "bkchr/proc-macro-crate",
+    "tag": "v1.3.1"
+  },
   "proc-macro2": {
     "repo": "dtolnay/proc-macro2",
     "tag": "1.0.107"
@@ -571,21 +779,34 @@
   },
   "pulley": "bytecodealliance/wasmtime",
   "pulley-derive": "bytecodealliance/wasmtime",
-  "quick-xml": "taiki-e/quick-xml",
+  "quick-xml": {
+    "repo": "tafia/quick-xml",
+    "tag": "v0.39.4"
+  },
   "quote": {
     "repo": "dtolnay/quote",
     "tag": "1.0.47"
   },
+  "r-efi": {
+    "repo": "r-efi/r-efi",
+    "tag": "v6.0.0"
+  },
+  "r-efi-string": "r-efi/r-efi-string",
   "rand": "rust-random/rand",
   "rand_core": "rust-random/rand",
-  "range-alloc": "gfx-rs/range-alloc",
+  "range-alloc": {
+    "repo": "gfx-rs/range-alloc",
+    "tag": "6f51102e4db212ad9e20e8dc2cef2c413902f1e8"
+  },
   "raw-window-handle": {
     "repo": "rust-windowing/raw-window-handle",
     "tag": "v0.6.2"
   },
+  "rayon": "rayon-rs/rayon",
+  "rayon-core": "rayon-rs/rayon",
   "redox_syscall": {
     "repo": "redox-os/syscall",
-    "tag": "0.4.1"
+    "tag": "0.9.3"
   },
   "redox_users": "redox-os/users",
   "regalloc2": {
@@ -611,6 +832,10 @@
     "repo": "rust-lang/rustc-hash",
     "tag": "v1.2.0"
   },
+  "rustc_version": {
+    "repo": "djc/rustc-version-rs",
+    "tag": "v0.4.1"
+  },
   "rustix": {
     "repo": "bytecodealliance/rustix",
     "tag": "v1.1.6"
@@ -621,11 +846,18 @@
   },
   "ryu": "dtolnay/ryu",
   "ryu-js": "dtolnay/ryu",
+  "same-file": {
+    "repo": "BurntSushi/same-file",
+    "tag": "1.0.6"
+  },
   "scoped-tls": {
     "repo": "alexcrichton/scoped-tls",
     "tag": "1.0.1"
   },
-  "scopeguard": "mvdnes/scopeguard",
+  "scopeguard": {
+    "repo": "bluss/scopeguard",
+    "tag": "v1.2.0"
+  },
   "semver": {
     "repo": "dtolnay/semver",
     "tag": "1.0.28"
@@ -652,6 +884,14 @@
     "tag": "653936e120cdd0a8d1b4f0837e2cce0f347da4c0"
   },
   "signal-hook-registry": "rust-lang/signal-hook-registry",
+  "simd_cesu8": {
+    "repo": "seancroach/simd_cesu8",
+    "tag": "v1.2.0"
+  },
+  "simdutf8": {
+    "repo": "rusticstuff/simdutf8",
+    "tag": "v0.1.5"
+  },
   "slab": {
     "repo": "tokio-rs/slab",
     "tag": "v0.4.12"
@@ -660,7 +900,10 @@
     "repo": "Kerollmops/slice-group-by",
     "tag": "v0.3.1"
   },
-  "slotmap": "orium/slotmap",
+  "slotmap": {
+    "repo": "orlp/slotmap",
+    "tag": "v1.1.1"
+  },
   "smallvec": {
     "repo": "servo/rust-smallvec",
     "tag": "v1.16.4"
@@ -669,6 +912,7 @@
     "repo": "Smithay/client-toolkit",
     "tag": "v0.19.2"
   },
+  "smithay-clipboard": "smithay/smithay-clipboard",
   "smol_str": {
     "repo": "rust-analyzer/smol_str",
     "tag": "v0.2.2"
@@ -689,6 +933,14 @@
     "repo": "nvzqz/static-assertions",
     "tag": "v1.1.0"
   },
+  "strum": {
+    "repo": "Peternator7/strum",
+    "tag": "v0.26.3"
+  },
+  "strum_macros": {
+    "repo": "Peternator7/strum",
+    "tag": "v0.26.3"
+  },
   "syn": {
     "repo": "dtolnay/syn",
     "tag": "3.0.9"
@@ -703,11 +955,11 @@
   },
   "thiserror": {
     "repo": "dtolnay/thiserror",
-    "tag": "1.0.69"
+    "tag": "2.0.21"
   },
   "thiserror-impl": {
     "repo": "dtolnay/thiserror",
-    "tag": "1.0.69"
+    "tag": "2.0.21"
   },
   "tokio": {
     "repo": "tokio-rs/tokio",
@@ -717,6 +969,18 @@
     "repo": "tokio-rs/tokio",
     "subdir": "tokio-macros",
     "tag": "tokio-macros-2.5.0"
+  },
+  "toml": {
+    "repo": "toml-rs/toml",
+    "tag": "v0.19.9"
+  },
+  "toml_datetime": {
+    "repo": "toml-rs/toml",
+    "tag": "toml_datetime-v0.6.11"
+  },
+  "toml_edit": {
+    "repo": "toml-rs/toml",
+    "tag": "v0.19.9"
   },
   "tracing": {
     "repo": "tokio-rs/tracing",
@@ -739,7 +1003,7 @@
   },
   "unicode-width": {
     "repo": "unicode-rs/unicode-width",
-    "tag": "v0.2.3"
+    "tag": "v0.1.17"
   },
   "unicode-xid": {
     "repo": "unicode-rs/unicode-xid",
@@ -754,6 +1018,10 @@
     "repo": "SergioBenitez/version_check",
     "tag": "v0.9.5"
   },
+  "walkdir": {
+    "repo": "BurntSushi/walkdir",
+    "tag": "2.5.0"
+  },
   "wasi": {
     "repo": "bytecodealliance/wasi",
     "tag": "0.11.1"
@@ -763,25 +1031,31 @@
     "tag": "0.2.129"
   },
   "wasm-bindgen-backend": "rustwasm/wasm-bindgen",
-  "wasm-bindgen-futures": "rustwasm/wasm-bindgen",
+  "wasm-bindgen-futures": {
+    "repo": "rustwasm/wasm-bindgen",
+    "tag": "0.2.129"
+  },
   "wasm-bindgen-macro": {
     "repo": "rustwasm/wasm-bindgen",
     "tag": "0.2.129"
   },
-  "wasm-bindgen-macro-support": "rustwasm/wasm-bindgen",
+  "wasm-bindgen-macro-support": {
+    "repo": "rustwasm/wasm-bindgen",
+    "tag": "0.2.129"
+  },
   "wasm-bindgen-shared": {
     "repo": "rustwasm/wasm-bindgen",
     "tag": "0.2.129"
   },
   "wasm-encoder": {
     "repo": "bytecodealliance/wasm-tools",
-    "tag": "v1.262.0"
+    "tag": "v1.215.0"
   },
   "wasm-metadata": "bytecodealliance/wasm-tools",
   "wasmi": "wasmi-labs/wasmi",
   "wasmparser": {
     "repo": "bytecodealliance/wasm-tools",
-    "tag": "v1.262.0"
+    "tag": "v1.215.0"
   },
   "wasmprinter": {
     "repo": "bytecodealliance/wasm-tools",
@@ -887,7 +1161,10 @@
     "repo": "aosp-mirror-neo/platform_external_rust_android-crates-io",
     "tag": "31206794e1a80afc33ee29f34e36f0bba0e404d0"
   },
-  "web-sys": "rustwasm/wasm-bindgen",
+  "web-sys": {
+    "repo": "rustwasm/wasm-bindgen",
+    "tag": "0.2.129"
+  },
   "web-time": {
     "repo": "daxpedda/web-time",
     "tag": "v1.1.0"
@@ -912,9 +1189,40 @@
     "repo": "BurntSushi/winapi-util",
     "tag": "0.1.11"
   },
+  "windows": {
+    "repo": "microsoft/windows-rs",
+    "tag": "0.58.0"
+  },
+  "windows-core": {
+    "repo": "microsoft/windows-rs",
+    "tag": "0.58.0"
+  },
+  "windows-implement": {
+    "repo": "microsoft/windows-rs",
+    "tag": "0.58.0"
+  },
+  "windows-interface": {
+    "repo": "microsoft/windows-rs",
+    "tag": "0.58.0"
+  },
   "windows-link": {
     "repo": "microsoft/windows-rs",
     "tag": "73"
+  },
+  "windows-registry": {
+    "repo": "microsoft/windows-rs",
+    "subdir": "crates/libs/registry",
+    "tag": "0.58.0"
+  },
+  "windows-result": {
+    "repo": "microsoft/windows-rs",
+    "subdir": "crates/libs/result",
+    "tag": "0.58.0"
+  },
+  "windows-strings": {
+    "repo": "microsoft/windows-rs",
+    "subdir": "crates/libs/strings",
+    "tag": "0.58.0"
   },
   "windows-sys": {
     "repo": "microsoft/windows-rs",
@@ -922,42 +1230,61 @@
   },
   "windows-targets": {
     "repo": "microsoft/windows-rs",
-    "tag": "0.52.0"
+    "subdir": "crates/libs/targets",
+    "tag": "0.58.0"
   },
   "windows_aarch64_gnullvm": {
     "repo": "microsoft/windows-rs",
-    "tag": "0.52.0"
+    "subdir": "crates/targets/aarch64_gnullvm",
+    "tag": "0.58.0"
   },
   "windows_aarch64_msvc": {
     "repo": "microsoft/windows-rs",
-    "tag": "0.52.0"
+    "subdir": "crates/targets/aarch64_msvc",
+    "tag": "0.58.0"
   },
   "windows_i686_gnu": {
     "repo": "microsoft/windows-rs",
-    "tag": "0.52.0"
+    "subdir": "crates/targets/i686_gnu",
+    "tag": "0.58.0"
   },
-  "windows_i686_gnullvm": "microsoft/windows-rs",
+  "windows_i686_gnullvm": {
+    "repo": "microsoft/windows-rs",
+    "subdir": "crates/targets/i686_gnullvm",
+    "tag": "0.58.0"
+  },
   "windows_i686_msvc": {
     "repo": "microsoft/windows-rs",
-    "tag": "0.52.0"
+    "subdir": "crates/targets/i686_msvc",
+    "tag": "0.58.0"
   },
   "windows_x86_64_gnu": {
     "repo": "microsoft/windows-rs",
-    "tag": "0.52.0"
+    "subdir": "crates/targets/x86_64_gnu",
+    "tag": "0.58.0"
   },
   "windows_x86_64_gnullvm": {
     "repo": "microsoft/windows-rs",
-    "tag": "0.52.0"
+    "subdir": "crates/targets/x86_64_gnullvm",
+    "tag": "0.58.0"
   },
   "windows_x86_64_msvc": {
     "repo": "microsoft/windows-rs",
-    "tag": "0.52.0"
+    "subdir": "crates/targets/x86_64_msvc",
+    "tag": "0.58.0"
   },
   "winit": {
     "repo": "rust-windowing/winit",
     "tag": "v0.30.13"
   },
-  "wit-bindgen": "bytecodealliance/wit-bindgen",
+  "winnow": {
+    "repo": "winnow-rs/winnow",
+    "tag": "v0.4.12"
+  },
+  "wit-bindgen": {
+    "repo": "bytecodealliance/wit-bindgen",
+    "tag": "v0.57.1"
+  },
   "wit-bindgen-core": "bytecodealliance/wit-bindgen",
   "wit-bindgen-rt": "bytecodealliance/wit-bindgen",
   "wit-bindgen-rust": "bytecodealliance/wit-bindgen",
@@ -987,6 +1314,10 @@
   "xkeysym": {
     "repo": "rust-windowing/xkeysym",
     "tag": "v0.2.1"
+  },
+  "xml-rs": {
+    "repo": "netvl/xml-rs",
+    "tag": "0.8.29"
   },
   "zerocopy": {
     "repo": "google/zerocopy",

@@ -116,12 +116,16 @@ def satisfies(v: str, req) -> bool:
     if op == "tilde":
         # ~X.Y.Z -> >=X.Y.Z <X.(Y+1).0 ; ~X.Y -> >=X.Y.0 <X.(Y+1).0
         return t[0] == major and t[1] == minor and t >= (major, minor, patch)
-    # caret
+    # caret: ^major.minor.patch
+    #   major > 0 -> same major, at least this version
+    #   major = 0, minor > 0 -> 0.minor.*, at least this version
+    #   0.0.patch -> same 0.0.* series, patch >= requested
+    #   ("^0.0" as written by cargo means >=0.0.0 <0.1.0, i.e. any 0.0.z)
     if major > 0:
-        return (major, minor, patch) >= (major, minor, patch) and t[0] == major and t >= (major, minor, patch)
+        return t[0] == major and t >= (major, minor, patch)
     if minor > 0:
         return t[0] == 0 and t[1] == minor and t >= (0, minor, patch)
-    return t == (0, 0, patch)
+    return t[0] == 0 and t[1] == 0 and t[2] >= patch
 
 
 def repo_base(repo: str) -> str:
@@ -204,6 +208,7 @@ def best_tag(repo: str, name: str, req) -> str | None:
 
 def main() -> int:
     pkg = sys.argv[1] if len(sys.argv) > 1 else "sim-world"
+    attempts: dict[str, int] = {}
     for round_no in range(1, 60):
         r = run(["cargo", "check", "-p", pkg], cwd=REPO_DIR, timeout=600)
         out = r.stdout + r.stderr
@@ -242,6 +247,17 @@ def main() -> int:
         if name not in MAP:
             print(f"    NO REPO MAPPING for {name}; add to crates-map.json")
             return 3
+        # Shared guard: the same package must not be retried forever
+        # (a bad map tag or a lying directory used to spin all 60 rounds).
+        attempts[name] = attempts.get(name, 0) + 1
+        if attempts[name] > 3:
+            print(f"    {name} still missing after 3 install attempts; "
+                  f"fix the crates-map entry or the vendored directory")
+            return 3
+        # Map entries that pin an exact repo tag are handled below, once
+        # the requirement is known (the pinned tag must satisfy it — one
+        # crate can need several major versions, e.g. redox_syscall
+        # 0.5.18 AND 0.9.x from the same repo).
         repo = MAP[name]
         # harden: strip cargo quoting/formatting noise from any branch
         req_s = (req_s or "").strip().strip('"').strip("'")
@@ -258,6 +274,31 @@ def main() -> int:
         if req is None:
             print(f"    cannot determine requirement for {name} (got {req_s!r})")
             return 3
+        # Map entries that pin an exact repo tag: install straight from
+        # that tag (and let vendor.py derive the crate version from the
+        # manifest) — but only when that pinned version actually
+        # satisfies the current requirement.
+        entry = _raw_map.get(name)
+        if isinstance(entry, dict) and entry.get("repo") and entry.get("tag"):
+            # Raw commit SHAs and subdir members are trusted (member
+            # crate versions routinely diverge from the repo tag, e.g.
+            # windows-rs tag 0.58.0 -> windows-targets 0.52.6): vendor.py
+            # bakes the manifest version into the directory name.
+            tag = entry["tag"]
+            is_sha = bool(re.fullmatch(r"[0-9a-f]{7,40}", tag))
+            mver = re.search(r"(\d+(?:\.\d+){0,2})(?!.*\d)", tag) if not is_sha else None
+            if is_sha or entry.get("subdir") or (mver and satisfies(mver.group(1), req)):
+                cmd = ["python3", str(VENDOR / "vendor.py"), "--name", name,
+                       "--repo", entry["repo"], "--tag", entry["tag"]]
+                if entry.get("subdir"):
+                    cmd += ["--subdir", entry["subdir"]]
+                print(f"    -> {entry['repo']} @ {entry['tag']} "
+                      f"(version from manifest)")
+                v = run(cmd, timeout=600)
+                print(v.stdout.strip()[-400:] or v.stderr.strip()[-400:])
+                if v.returncode != 0:
+                    return 4
+                continue
         tag = best_tag(repo, name, req)
         # Subdir crates inside the wasmtime monorepo (cranelift/*) are
         # versioned independently of the repo tags: use the wasmtime

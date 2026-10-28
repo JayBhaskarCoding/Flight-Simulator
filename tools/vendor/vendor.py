@@ -499,7 +499,9 @@ def install(pkg_src: Path, name: str, version: str, vendor_dir: Path) -> Path:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", required=True, help="crates.io package name")
-    ap.add_argument("--version", required=True, help="exact package version to vendor")
+    ap.add_argument("--version",
+                    help="exact package version to vendor "
+                         "(derived from the manifest when omitted)")
     ap.add_argument("--repo", help="github owner/name (skips discovery)")
     ap.add_argument("--tag", help="git tag (skips tag selection)")
     ap.add_argument("--subdir", help="path of the package inside the repository")
@@ -509,10 +511,11 @@ def main() -> None:
 
     vendor_dir = Path(os.environ.get("VENDOR_DIR")
                       or os.path.expanduser("~/cargo-vendored-sources"))
-    existing = vendor_dir / f"{args.name}-{args.version}"
-    if existing.exists() and (existing / ".cargo-checksum.json").exists():
-        print(f"already vendored: {existing}")
-        return
+    if args.version:
+        existing = vendor_dir / f"{args.name}-{args.version}"
+        if existing.exists() and (existing / ".cargo-checksum.json").exists():
+            print(f"already vendored: {existing}")
+            return
 
     cmap = load_map()
     entry = cmap.get(args.name)
@@ -532,6 +535,9 @@ def main() -> None:
 
     tag = tag0
     if not tag:
+        if not args.version:
+            die("--tag (or a crates-map tag entry) is required when "
+                "--version is omitted")
         tags = list_tags(repo)
         tag = pick_tag(tags, args.name, args.version)
         if not tag:
@@ -544,7 +550,8 @@ def main() -> None:
         print(f"map updated: {args.name} -> {repo}@{tag}")
         return
 
-    print(f"vendoring {args.name} {args.version} <- {repo}@{tag}"
+    print(f"vendoring {args.name} {args.version or '(manifest version)'} "
+          f"<- {repo}@{tag}"
           + (f" (subdir {subdir})" if subdir else ""))
     with tempfile.TemporaryDirectory(prefix="vendor-") as td:
         tdp = Path(td)
@@ -566,6 +573,18 @@ def main() -> None:
             pkg_dir = hits[0]
 
         normalize_manifest(pkg_dir, args.name, root)
+        if not args.version:
+            # Derive the exact package version from the (normalized)
+            # manifest so the directory name always matches what cargo
+            # will see inside — tags in monorepos often differ from the
+            # member crate's version (e.g. glutin v0.32.3 -> wgl_sys 0.6.1).
+            import tomllib as _tl
+            _pkg = _tl.loads((pkg_dir / "Cargo.toml").read_text())["package"]
+            args.version = str(_pkg["version"])
+            existing = vendor_dir / f"{args.name}-{args.version}"
+            if existing.exists() and (existing / ".cargo-checksum.json").exists():
+                print(f"already vendored: {existing}")
+                return
         stage = tdp / "pkg"
         shutil.copytree(pkg_dir, stage, symlinks=True)
         for junk in ("target", ".git"):
