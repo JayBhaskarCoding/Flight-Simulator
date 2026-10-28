@@ -1223,6 +1223,7 @@ dependencies = [
  "log",
  "ndk-sys 0.6.0+11769913",
  "num_enum",
+ "raw-window-handle",
  "thiserror 1.0.69",
 ]
 
@@ -1528,6 +1529,23 @@ name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a01913d1526ddf8849d4ad8def80ed17c7ef8a8418eafdd1db44953cb3aa35b"
+
+[[package]]
+name = "open-msfs"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "sim-atmosphere",
+ "sim-avionics",
+ "sim-cfg",
+ "sim-geo",
+ "sim-physics",
+ "sim-render",
+ "sim-world",
+ "tokio",
+ "wgpu",
+ "winit",
+]
 
 [[package]]
 name = "orbclient"
@@ -3087,6 +3105,7 @@ dependencies = [
  "orbclient",
  "percent-encoding",
  "pin-project",
+ "raw-window-handle",
  "redox_syscall 0.4.1",
  "rustix 0.38.44",
  "smithay-client-toolkit",

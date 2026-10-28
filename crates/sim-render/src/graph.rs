@@ -926,6 +926,13 @@ impl Renderer {
         self.size
     }
 
+    /// Clone of the underlying wgpu device (used by windowed
+    /// applications to (re)configure their own surface with the same
+    /// device the renderer was built from).
+    pub fn device_handle(&self) -> wgpu::Device {
+        self.device.clone()
+    }
+
     /// Create an external render target texture + view (used by tests
     /// and by callers that want to composite the tonemap output into
     /// their own surface-equivalent texture). The texture is
@@ -1390,20 +1397,12 @@ impl Renderer {
         model: &GltfModel,
         origin: &FloatingOrigin,
         root_position_ecef: DVec3,
-        root_rotation: Quat,
-        root_scale: Vec3,
+        root_rotation: DQuat,
+        root_scale: DVec3,
     ) -> Vec<DrawItem> {
         let cam = origin.camera_ecef().as_dvec3();
-        let root = DMat4::from_scale_rotation_translation(
-            DVec3::new(root_scale.x as f64, root_scale.y as f64, root_scale.z as f64),
-            DQuat::from_xyzw(
-                root_rotation.x as f64,
-                root_rotation.y as f64,
-                root_rotation.z as f64,
-                root_rotation.w as f64,
-            ),
-            root_position_ecef,
-        );
+        let root =
+            DMat4::from_scale_rotation_translation(root_scale, root_rotation, root_position_ecef);
         model
             .instances
             .iter()

@@ -1,0 +1,25 @@
+[package]
+name = "open-msfs"
+description = "OpenMSFS main binary: ECS world, 1000 Hz physics thread, winit/wgpu render loop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+glam.workspace = true
+sim-geo = { path = "../../crates/sim-geo" }
+sim-cfg = { path = "../../crates/sim-cfg" }
+sim-atmosphere = { path = "../../crates/sim-atmosphere" }
+sim-physics = { path = "../../crates/sim-physics" }
+sim-world = { path = "../../crates/sim-world" }
+sim-avionics = { path = "../../crates/sim-avionics" }
+sim-render = { path = "../../crates/sim-render" }
+tokio.workspace = true
+wgpu.workspace = true
+winit.workspace = true
+
+[[bin]]
+name = "open-msfs"
+path = "src/main.rs"

@@ -8,6 +8,7 @@ members = [
     "crates/sim-world",
     "crates/sim-avionics",
     "crates/sim-render",
+    "bins/open-msfs",
 ]
 
 [workspace.package]
@@ -47,7 +48,7 @@ wgpu = { version = "24", default-features = false, features = [
     "dx12",
     "metal",
 ] }
-winit = { version = "0.30", default-features = false, features = ["x11", "wayland"] }
+winit = { version = "0.30", default-features = false, features = ["x11", "wayland", "rwh_06"] }
 
 # --- wasm gauge host (sim-avionics) ---
 wasmtime = { version = "24", default-features = false, features = ["cranelift", "wat", "runtime"] }

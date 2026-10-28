@@ -350,13 +350,8 @@ fn draws_from_gltf_rebases_in_f64_before_narrowing() {
     // ECEF offset for exactness: +Z direction is close to east here;
     // use an exact offset vector instead)
     let root_pos = cam_ecef.as_dvec3() + DVec3::new(0.0, 100.0, 0.0);
-    let draws = Renderer::draws_from_gltf(
-        &model,
-        &origin,
-        root_pos,
-        Quat::IDENTITY,
-        Vec3::ONE,
-    );
+    let draws =
+        Renderer::draws_from_gltf(&model, &origin, root_pos, DQuat::IDENTITY, DVec3::ONE);
     assert_eq!(draws.len(), 1);
     // translation column = root − camera + node translation (0,2,0)
     // = (0, 102, 0), narrowed last
@@ -373,7 +368,8 @@ fn draws_from_gltf_rebases_in_f64_before_narrowing() {
         Ecef::from(cam_ecef.as_dvec3() + DVec3::new(0.0, 10.0, 0.0)),
         DQuat::IDENTITY,
     );
-    let draws2 = Renderer::draws_from_gltf(&model, &origin2, root_pos, Quat::IDENTITY, Vec3::ONE);
+    let draws2 =
+        Renderer::draws_from_gltf(&model, &origin2, root_pos, DQuat::IDENTITY, DVec3::ONE);
     assert!((draws2[0].model[3][1] - 92.0).abs() < 1e-3);
 }
 
