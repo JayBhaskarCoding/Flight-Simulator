@@ -64,7 +64,7 @@
   },
   "bitflags": {
     "repo": "bitflags/bitflags",
-    "tag": "1.3.2"
+    "tag": "2.13.2"
   },
   "block2": {
     "repo": "madsmtm/objc2",
@@ -80,7 +80,7 @@
   },
   "bytemuck_derive": {
     "repo": "Lokathor/bytemuck",
-    "tag": "bytemuck_derive-v1.12.1"
+    "tag": "v1.12.1"
   },
   "bytes": {
     "repo": "tokio-rs/bytes",
@@ -325,7 +325,7 @@
   },
   "foreign-types-shared": {
     "repo": "sfackler/foreign-types",
-    "tag": "foreign-types-shared-v0.3.1"
+    "tag": "v0.3.1"
   },
   "form_urlencoded": "servo/rust-url",
   "futures": "rust-lang/futures-rs",
@@ -356,7 +356,7 @@
   },
   "gl_generator": {
     "repo": "brendanzab/gl-rs",
-    "tag": "gl_generator-v0.14.0"
+    "tag": "gl-v0.14.0"
   },
   "glam": {
     "repo": "bitshifter/glam-rs",
@@ -404,7 +404,7 @@
   "half": "starkat99/half-rs",
   "hashbrown": {
     "repo": "rust-lang/hashbrown",
-    "tag": "v0.12.3"
+    "tag": "v0.17.1"
   },
   "hashlink": {
     "repo": "djc/hashlink",
@@ -425,7 +425,7 @@
   "idna": "servo/rust-url",
   "indexmap": {
     "repo": "indexmap-rs/indexmap",
-    "tag": "1.9.3"
+    "tag": "2.14.2"
   },
   "inherent": "dtolnay/inherent",
   "itertools": {
@@ -542,7 +542,7 @@
   },
   "miniz_oxide": {
     "repo": "Frommi/miniz_oxide",
-    "tag": "0.8.9"
+    "tag": "0.9.0"
   },
   "mio": {
     "repo": "tokio-rs/mio",
@@ -551,11 +551,11 @@
   "naga": {
     "repo": "gfx-rs/wgpu",
     "subdir": "naga",
-    "tag": "naga-v24.0.0"
+    "tag": "v24.0.0"
   },
   "ndk": {
     "repo": "rust-mobile/ndk",
-    "tag": "ndk-0.9.0"
+    "tag": "cargo-apk-0.9.0"
   },
   "ndk-context": {
     "repo": "rust-mobile/ndk-context",
@@ -1008,7 +1008,7 @@
   "tracing-attributes": "tokio-rs/tracing",
   "tracing-core": {
     "repo": "tokio-rs/tracing",
-    "tag": "tracing-core-0.1.36"
+    "tag": "tracing-0.1.36"
   },
   "typed-arena": "nnethercote/typed-arena",
   "unarray": "dtolnay/unarray",
@@ -1068,13 +1068,15 @@
   },
   "wasm-encoder": {
     "repo": "bytecodealliance/wasm-tools",
-    "tag": "v1.215.0"
+    "subdir": "crates/wasm-encoder",
+    "tag": "v1.262.0"
   },
   "wasm-metadata": "bytecodealliance/wasm-tools",
   "wasmi": "wasmi-labs/wasmi",
   "wasmparser": {
     "repo": "bytecodealliance/wasm-tools",
-    "tag": "v1.215.0"
+    "subdir": "crates/wasmparser",
+    "tag": "v1.262.0"
   },
   "wasmprinter": {
     "repo": "bytecodealliance/wasm-tools",
@@ -1190,11 +1192,11 @@
   },
   "wgpu": {
     "repo": "gfx-rs/wgpu",
-    "tag": "wgpu-v24.0.5"
+    "tag": "v24.0.5"
   },
   "wgpu-core": {
     "repo": "gfx-rs/wgpu",
-    "tag": "wgpu-v24.0.5"
+    "tag": "v24.0.5"
   },
   "wgpu-hal": {
     "repo": "gfx-rs/wgpu",

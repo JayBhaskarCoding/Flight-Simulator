@@ -68,6 +68,46 @@ for _n in (
 BLOB_WALK = {
     ("adler2", "2.0.1"): ("catboost/catboost", "contrib/crates/adler2-2.0.1"),
     ("simd-adler32", "0.3.10"): ("catboost/catboost", "contrib/crates/simd-adler32-0.3.10"),
+    # Registry copies re-recorded after environment resets (exact
+    # crates.io versions living in cargo-home snapshots / vendor trees).
+    ("android-properties", "0.2.2"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/android-properties-0.2.2"),
+    ("block", "0.1.6"): ("peixuanthomas/rustclock", ".cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/block-0.1.6"),
+    ("gethostname", "1.1.0"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/gethostname-1.1.0"),
+    ("hermit-abi", "0.5.2"): ("ClickHouse/rust_vendor", "hermit-abi-0.5.2"),
+    ("plain", "0.2.3"): ("ClickHouse/rust_vendor", "plain-0.2.3"),
+    ("spirv", "0.3.0+sdk-1.3.268.0"): (
+        "peixuanthomas/rustclock",
+        ".cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/spirv-0.3.0+sdk-1.3.268.0",
+    ),
+    ("wasip2", "1.0.4+wasi-0.2.12"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/wasip2-1.0.4+wasi-0.2.12"),
+    ("xcursor", "0.3.11"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/xcursor-0.3.11"),
+    ("khronos-egl", "6.0.0"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/khronos-egl-6.0.0"),
+    ("renderdoc-sys", "1.1.0"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/renderdoc-sys-1.1.0"),
+    ("wayland-client", "0.31.15"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/wayland-client-0.31.15"),
+    ("wayland-cursor", "0.31.14"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/wayland-cursor-0.31.14"),
+    ("wayland-protocols-plasma", "0.3.12"): (
+        "bisand/denise",
+        "target-docker/cargo-home-latest/registry/src/index.crates.io-1949cf8c6b5b557f/wayland-protocols-plasma-0.3.12",
+    ),
+    ("wayland-protocols-wlr", "0.3.12"): (
+        "bisand/denise",
+        "target-docker/cargo-home-latest/registry/src/index.crates.io-1949cf8c6b5b557f/wayland-protocols-wlr-0.3.12",
+    ),
+    ("bit-set", "0.8.0"): ("ClickHouse/rust_vendor", "bit-set-0.8.0"),
+    ("dispatch", "0.2.0"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/dispatch-0.2.0"),
+    ("foreign-types-shared", "0.3.1"): (
+        "peixuanthomas/rustclock",
+        ".cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/foreign-types-shared-0.3.1",
+    ),
+    ("bytemuck_derive", "1.12.1"): (
+        "bisand/denise",
+        "target-docker/cargo-home-latest/registry/src/index.crates.io-1949cf8c6b5b557f/bytemuck_derive-1.12.1",
+    ),
+    ("tracing-core", "0.1.36"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/tracing-core-0.1.36"),
+    ("ndk", "0.9.0"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/ndk-0.9.0"),
+    ("ndk-sys", "0.6.0+11769913"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/ndk-sys-0.6.0+11769913"),
+    ("heck", "0.4.1"): ("ClickHouse/rust_vendor", "heck-0.4.1"),
+    ("embedded-io", "0.6.1"): ("ClickHouse/rust_vendor", "embedded-io-0.6.1"),
 }
 
 
@@ -129,7 +169,13 @@ def find_tag(repo: str, version: str) -> str:
 
 
 def api(url: str):
-    req = urllib.request.Request(url, headers={"User-Agent": "openmsfs-vendor", "Accept": "application/vnd.github+json"})
+    import os as _os
+
+    _headers = {"User-Agent": "openmsfs-vendor", "Accept": "application/vnd.github+json"}
+    _tok = _os.environ.get("GH_TOKEN", "")
+    if _tok:
+        _headers["Authorization"] = f"Bearer {_tok}"
+    req = urllib.request.Request(url, headers=_headers)
     with urllib.request.urlopen(req, timeout=60) as r:
         import json as _j
 
@@ -137,19 +183,32 @@ def api(url: str):
 
 
 def blob_walk(repo: str, path: str, dest: Path) -> None:
-    # `path` is the crate directory itself: resolve its tree sha through
-    # the PARENT listing (contents-of-dir returns the entries below it).
-    parent, _, name = path.rpartition("/")
-    listing = api(f"https://api.github.com/repos/{repo}/contents/{parent}")
-    tree_sha = next(e["sha"] for e in listing if e["name"] == name)
-    tree = api(f"https://api.github.com/repos/{repo}/git/trees/{tree_sha}?recursive=1")
+    # `path` is the crate directory itself. The contents API cannot list
+    # directories with >1000 entries (404) and a single recursive root-tree
+    # request truncates on big repos, so descend the tree object graph one
+    # level at a time and only recurse on the final crate directory.
+    cur = api(f"https://api.github.com/repos/{repo}/git/trees/HEAD")["sha"]
+    for i, seg in enumerate(path.split("/")):
+        level = api(f"https://api.github.com/repos/{repo}/git/trees/{cur}")
+        if level.get("truncated"):
+            raise RuntimeError(f"tree level {i} of {repo}/{path} truncated by GitHub")
+        nxt = next((e for e in level["tree"] if e["path"] == seg), None)
+        if nxt is None:
+            raise RuntimeError(f"{repo}: no tree entry {seg!r} while walking {path}")
+        cur, kind = nxt["sha"], nxt["type"]
+        if kind != "tree" and i != len(path.split("/")) - 1:
+            raise RuntimeError(f"{repo}: {seg} is {kind}, expected tree")
+    tree = api(f"https://api.github.com/repos/{repo}/git/trees/{cur}?recursive=1")
+    if tree.get("truncated"):
+        raise RuntimeError(f"tree for {repo}/{path} truncated by GitHub")
+    blobs = [(t["path"], t["sha"]) for t in tree["tree"] if t["type"] == "blob"]
+    if not blobs:
+        raise RuntimeError(f"{repo}/{path} has no blobs")
     dest.mkdir(parents=True, exist_ok=True)
-    for t in tree["tree"]:
-        if t["type"] != "blob":
-            continue
-        p = dest / t["path"]
+    for rel, sha in blobs:
+        p = dest / rel
         p.parent.mkdir(parents=True, exist_ok=True)
-        blob = api(f"https://api.github.com/repos/{repo}/git/blobs/{t['sha']}")
+        blob = api(f"https://api.github.com/repos/{repo}/git/blobs/{sha}")
         p.write_bytes(base64.b64decode(blob["content"]))
     if not (dest / ".cargo-checksum.json").exists():
         # registry `src/` copies never ship the checksum; forge one so
