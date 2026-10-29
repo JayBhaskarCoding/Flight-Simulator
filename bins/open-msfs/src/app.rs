@@ -223,7 +223,10 @@ impl App {
                 .map_err(|e| format!("create_window: {e}"))?,
         );
 
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::PRIMARY,
+            ..Default::default()
+        });
         let surface = instance
             .create_surface(window.clone())
             .map_err(|e| format!("create_surface: {e}"))?;
