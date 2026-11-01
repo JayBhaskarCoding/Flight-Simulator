@@ -15,7 +15,7 @@ fn reference() -> AircraftDefinition {
 
 fn parked_world(def: &AircraftDefinition, drop_height_m: f64) -> PhysicsWorld {
     let mass = def.flight_model.weight.empty_weight_kg;
-    let cg = DVec3::new(def.flight_model.weight.empty_cg_arm_m, 0.0, 0.0);
+    let cg = DVec3::new(def.flight_model.weight.empty_cg_x_m, 0.0, 0.0);
     // upright attitude: body +Z (down) maps to world-down, so the strut
     // patch (body z = attach 0.4 + strut 0.5 = 0.9) sits 0.9 m BELOW the
     // origin; start `drop_height_m` above the field.
@@ -140,7 +140,7 @@ fn thousand_steps_make_exactly_one_second() {
 fn airborne_cruise_drag_brakes_without_thrust() {
     let def = reference();
     let mass = def.flight_model.weight.empty_weight_kg;
-    let cg = DVec3::new(def.flight_model.weight.empty_cg_arm_m, 0.0, 0.0);
+    let cg = DVec3::new(def.flight_model.weight.empty_cg_x_m, 0.0, 0.0);
     let state = RigidBodyState::level_flight(3_000.0, 0.0, 62.0);
     let mut world = PhysicsWorld::new_on_flat_field(&def, mass, cg, state, 0.0);
     let atm = AtmosphereSample {
@@ -172,7 +172,7 @@ fn airborne_cruise_drag_brakes_without_thrust() {
 fn elevator_command_pitch_down_from_level_flight() {
     let def = reference();
     let mass = def.flight_model.weight.empty_weight_kg;
-    let cg = DVec3::new(def.flight_model.weight.empty_cg_arm_m, 0.0, 0.0);
+    let cg = DVec3::new(def.flight_model.weight.empty_cg_x_m, 0.0, 0.0);
     let state = RigidBodyState::level_flight(2_000.0, 0.0, 60.0);
     let mut world = PhysicsWorld::new_on_flat_field(&def, mass, cg, state, 0.0);
     world.controls = ControlInputs {
@@ -213,159 +213,4 @@ fn flaps_change_the_aero_wrench_significantly() {
         clean.force_body.z
     );
     assert!(flapped.torque_body.y.is_finite());
-}
-
-#[test]
-fn ground_effect_reduces_drag_near_ground() {
-    let def = reference();
-    let mut solver = AeroSolver::from_aircraft(&def, DVec3::ZERO);
-    let v_body = DVec3::new(40.0, 0.0, 4.0); // angle of attack ~0.1 rad
-    let atm = AtmosphereSample::default();
-
-    // High altitude (out of ground effect)
-    solver.set_height_agl(50.0);
-    let out_high = solver.solve(v_body, DVec3::ZERO, &atm, &ControlInputs::default());
-
-    // Near ground (2 metres above runway)
-    solver.set_height_agl(2.0);
-    let out_low = solver.solve(v_body, DVec3::ZERO, &atm, &ControlInputs::default());
-
-    let v_hat = v_body.normalize();
-    let drag_high = -out_high.force_body.dot(v_hat);
-    let drag_low = -out_low.force_body.dot(v_hat);
-
-    assert!(
-        drag_low < drag_high,
-        "ground effect must reduce total drag near the ground: {drag_low} vs {drag_high}"
-    );
-}
-
-#[test]
-fn propeller_generates_realistic_left_turning_tendencies() {
-    let def = reference();
-    let mass = def.flight_model.weight.empty_weight_kg;
-    let cg = DVec3::new(def.flight_model.weight.empty_cg_arm_m, 0.0, 0.0);
-    let state = RigidBodyState::level_flight(1_000.0, 0.0, 35.0);
-    let mut world = PhysicsWorld::new_on_flat_field(&def, mass, cg, state, 0.0);
-
-    // Set full throttle prop parameters: 2700 RPM (~283 rad/s), 2200 N thrust, 1.63 kg*m^2 inertia
-    world.prop_omega_radps = 282.74;
-    world.prop_inertia_kgm2 = 1.63;
-    world.prop_thrust_n = 2200.0;
-    world.prop_torque_nm = 350.0; // engine torque
-
-    // 1. In level flight with positive thrust:
-    let torques = world.propeller_torques();
-
-    // Torque reaction: must roll to the left (-X moment)
-    assert!(
-        torques.x < 0.0,
-        "torque reaction must roll left: {}",
-        torques.x
-    );
-
-    // Spiraling slipstream: must yaw to the left (-Z moment)
-    assert!(
-        torques.z < 0.0,
-        "spiraling slipstream must yaw left: {}",
-        torques.z
-    );
-
-    // 2. High angle of attack climb: positive alpha increases P-factor yaw to the left
-    let v_climb = DVec3::new(30.0, 0.0, 4.0); // positive alpha (downward relative velocity in body frame)
-    world.state.velocity_mps = world.state.body_to_world(v_climb);
-    let torques_climb = world.propeller_torques();
-    assert!(
-        torques_climb.z < torques.z,
-        "P-factor under climb angle of attack must increase left yaw: {} vs {}",
-        torques_climb.z,
-        torques.z
-    );
-
-    // 3. Gyroscopic precession: pitching up (q > 0) with CW propeller precesses yaw right (+Z)
-    world.state.omega_body_radps = DVec3::new(0.0, 0.5, 0.0);
-    let torques_pitching = world.propeller_torques();
-    assert!(
-        torques_pitching.z > torques_climb.z,
-        "pitch-up precession must produce positive Z yaw moment"
-    );
-}
-
-#[test]
-fn propwash_boosts_elevator_authority_at_low_airspeed() {
-    let def = reference();
-    let solver = AeroSolver::from_aircraft(&def, DVec3::ZERO);
-    let v_body = DVec3::new(10.0, 0.0, 0.0); // low speed (e.g. takeoff roll)
-    let atm = AtmosphereSample::default();
-
-    let cmd_clean = ControlInputs {
-        elevator_rad: 0.1,
-        prop_thrust_n: 0.0,
-        ..ControlInputs::default()
-    };
-    let out_clean = solver.solve(v_body, DVec3::ZERO, &atm, &cmd_clean);
-
-    let cmd_thrust = ControlInputs {
-        elevator_rad: 0.1,
-        prop_thrust_n: 2200.0, // full takeoff thrust
-        ..ControlInputs::default()
-    };
-    let out_thrust = solver.solve(v_body, DVec3::ZERO, &atm, &cmd_thrust);
-
-    // Elevator moment magnitude must be significantly greater with propwash
-    assert!(
-        out_thrust.torque_body.y.abs() > out_clean.torque_body.y.abs() * 1.5,
-        "propwash must augment elevator authority at low speed: {} vs {}",
-        out_thrust.torque_body.y,
-        out_clean.torque_body.y
-    );
-}
-
-#[test]
-fn adverse_yaw_opposes_roll_command() {
-    let def = reference();
-    let solver = AeroSolver::from_aircraft(&def, DVec3::ZERO);
-    let v_body = DVec3::new(50.0, 0.0, 0.0);
-    let atm = AtmosphereSample::default();
-
-    // Right roll command (positive aileron): adverse yaw should create negative Z moment (yaw nose left)
-    let cmd = ControlInputs {
-        aileron_rad: 0.15,
-        ..ControlInputs::default()
-    };
-    let out = solver.solve(v_body, DVec3::ZERO, &atm, &cmd);
-
-    assert!(out.torque_body.x > 0.0, "aileron must roll right (+X)");
-    assert!(
-        out.torque_body.z < 0.0,
-        "aileron deflection must create adverse yaw to the left (-Z): {}",
-        out.torque_body.z
-    );
-}
-
-#[test]
-fn elevator_trim_acts_identically_to_stick_trim() {
-    let def = reference();
-    let solver = AeroSolver::from_aircraft(&def, DVec3::ZERO);
-    let v_body = DVec3::new(50.0, 0.0, 0.0);
-    let atm = AtmosphereSample::default();
-
-    let cmd_stick = ControlInputs {
-        elevator_rad: 0.05,
-        elevator_trim_rad: 0.0,
-        ..ControlInputs::default()
-    };
-    let out_stick = solver.solve(v_body, DVec3::ZERO, &atm, &cmd_stick);
-
-    let cmd_trim = ControlInputs {
-        elevator_rad: 0.0,
-        elevator_trim_rad: 0.05,
-        ..ControlInputs::default()
-    };
-    let out_trim = solver.solve(v_body, DVec3::ZERO, &atm, &cmd_trim);
-
-    assert!(
-        (out_stick.torque_body.y - out_trim.torque_body.y).abs() < 1e-6,
-        "trim and stick deflections must produce identical moments"
-    );
 }

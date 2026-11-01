@@ -36,7 +36,9 @@ pub mod terrain_mesh;
 
 pub use cache::{CacheKey, CacheStats, TileCache};
 pub use dem::DemTile;
-pub use osm::{Building, OsmBounds, OsmError, OsmMap, OsmNode, OsmWay, Road};
+pub use osm::{
+    Building, OsmBounds, OsmError, OsmMap, OsmMember, OsmNode, OsmRelation, OsmWay, Road,
+};
 pub use source::{FileTileSource, TileKind, TileSource};
 pub use streamer::{
     ResidentState, StreamerConfig, StreamerStats, TileEvent, TileEventPayload, TileFetch,

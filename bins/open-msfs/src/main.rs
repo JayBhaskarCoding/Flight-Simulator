@@ -8,7 +8,8 @@
 //!   This is the mode CI/sandboxes use (no display required).
 //! * `--windowed`: opens a winit window and presents sky + clouds +
 //!   optional glTF model through [`sim_render::Renderer`].
-//! * `--realtime`: pace physics against the wall clock (both modes).
+//! * `--realtime`: pace headless physics against the wall clock;
+//!   windowed mode is always real-time.
 //! * `--simconnect`: serve the OpenSimConnect TCP protocol on port
 //!   45170 (shares the SimVarBus with the physics thread).
 //! * `--model PATH.glb`: load an aircraft glTF/GLB and draw it at the
@@ -21,6 +22,7 @@
 //! headless). The physics thread itself is independent of
 //! presentation — it only shares a `Snapshot` and a `ControlCommand`.
 
+use glam::{Mat4, Quat, Vec3};
 use open_msfs::app;
 use open_msfs::ecs::Ecs;
 use open_msfs::sim::{
@@ -43,6 +45,7 @@ struct Cli {
     origin: Option<(f64, f64, f64)>,
     airborne: bool,
     ground: bool,
+    heading_deg: Option<f64>,
     ap_heading: Option<f64>,
     ap_altitude_ft: Option<f64>,
 }
@@ -51,6 +54,10 @@ struct Cli {
 enum Mode {
     Headless,
     Windowed,
+}
+
+fn physics_fast_forward(mode: Mode, realtime_requested: bool) -> bool {
+    mode == Mode::Headless && !realtime_requested
 }
 
 impl Default for Cli {
@@ -65,6 +72,7 @@ impl Default for Cli {
             origin: None,
             airborne: false,
             ground: false,
+            heading_deg: None,
             ap_heading: None,
             ap_altitude_ft: None,
         }
@@ -82,10 +90,11 @@ fn print_usage() {
            --windowed           run the winit/wgpu window (needs a display + GPU)\n\
          \n\
          simulation:\n\
-           --realtime           pace the 1000 Hz physics thread to wall clock\n\
-           --airborne           start airborne (--origin ALT metres above field)\n\
-           --ground             start on the ground instead of the NYC flight start\n\
+           --realtime           pace headless physics to wall clock\n\
+           --airborne           start 1,000 m above field at 55 m/s\n\
+           --ground             start on a runway instead of the NYC flight start\n\
            --origin LAT,LON,ALT field origin in degrees/metres [40,-74,0]\n\
+           --heading DEG        initial heading for ground or airborne starts\n\
            --ap-heading DEG     engage heading hold autopilot\n\
            --ap-alt FT          engage altitude hold autopilot\n\
            --tz MINUTES         civil UTC offset for the sun [330]\n\
@@ -125,6 +134,13 @@ fn parse_cli(args: &[String]) -> Result<Cli, String> {
             }
             "--model" => cli.model = Some(next(&mut i)?),
             "--world-data" => cli.world_data = Some(next(&mut i)?),
+            "--heading" => {
+                cli.heading_deg = Some(
+                    next(&mut i)?
+                        .parse()
+                        .map_err(|e| format!("--heading: {e}"))?,
+                )
+            }
             "--ap-heading" => {
                 cli.ap_heading = Some(
                     next(&mut i)?
@@ -183,9 +199,13 @@ fn main() {
 fn run(cli: Cli) -> Result<(), String> {
     let mut config = SimConfig {
         airborne: cli.airborne,
-        fast: !cli.realtime,
+        fast: physics_fast_forward(cli.mode, cli.realtime),
         ..SimConfig::default()
     };
+    if cli.airborne {
+        config.initial_altitude_m = 1_000.0;
+        config.initial_airspeed_mps = 55.0;
+    }
     // A ground-level spawn at the default Lower Manhattan coordinate can
     // intersect buildings. Give the normal windowed experience clear air
     // around the aircraft; --ground keeps the runway/ground-start option.
@@ -196,12 +216,16 @@ fn run(cli: Cli) -> Result<(), String> {
         config.initial_altitude_m = 1_000.0;
         config.initial_airspeed_mps = 55.0;
     }
+    if cli.ground && cli.origin.is_none() {
+        // Start 150 m into KJFK runway 04R (OSM regional surface bundle).
+        config.origin = sim_geo::LatLonAlt::from_degrees(40.6267, -73.7693, 4.0);
+        config.initial_heading_rad = 30.7_f64.to_radians();
+    }
     if let Some((lat, lon, alt)) = cli.origin {
         config.origin = sim_geo::LatLonAlt::from_degrees(lat, lon, alt);
-        if cli.airborne {
-            config.initial_altitude_m = alt;
-            config.initial_airspeed_mps = 55.0;
-        }
+    }
+    if let Some(heading) = cli.heading_deg {
+        config.initial_heading_rad = heading.rem_euclid(360.0).to_radians();
     }
 
     let default_world_data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/world");
@@ -248,11 +272,28 @@ fn run(cli: Cli) -> Result<(), String> {
     let command = core.command_handle();
     let bus = core.bus();
 
-    // optional glTF aircraft model
-    let model = match &cli.model {
+    // Use the detailed bundled C172 by default in windowed mode; a user
+    // supplied path still overrides it.
+    let bundled_model =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/aircraft/c172.glb");
+    let model_path = cli
+        .model
+        .as_ref()
+        .map(std::path::PathBuf::from)
+        .or_else(|| {
+            (cli.mode == Mode::Windowed && bundled_model.is_file()).then_some(bundled_model)
+        });
+    let model = match model_path {
         Some(path) => {
-            let m = sim_render::GltfSource::from_file(std::path::Path::new(path))
+            let mut m = sim_render::GltfSource::from_file(&path)
                 .map_err(|e| format!("model {path:?}: {e}"))?;
+            if path
+                .file_name()
+                .is_some_and(|name| name.eq_ignore_ascii_case("c172.glb"))
+            {
+                let (length, wingspan, height) = align_c172_model(&mut m);
+                println!("C172 model: {length:.2}m long, {wingspan:.2}m span, {height:.2}m high");
+            }
             println!(
                 "model: {} mesh(es), {} material(s), {} instance(s)",
                 m.meshes.len(),
@@ -340,6 +381,37 @@ fn run(cli: Cli) -> Result<(), String> {
             result
         }
     }
+}
+
+/// Convert the bundled glTF Y-up aircraft frame to the simulator body
+/// frame (+X forward, +Y right, +Z down), center it at its CG, and place
+/// its landing wheels one metre below the root.
+fn align_c172_model(model: &mut sim_render::GltfModel) -> (f32, f32, f32) {
+    // The source C172 faces toward glTF -X. Map its Y-up frame to the
+    // simulator's Z-down frame, then turn its nose into body +X.
+    let gltf_to_body = Quat::from_rotation_z(std::f32::consts::PI)
+        * Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2);
+    let mut min = Vec3::splat(f32::INFINITY);
+    let mut max = Vec3::splat(f32::NEG_INFINITY);
+    for instance in &model.instances {
+        if let Some(mesh) = model.meshes.get(instance.mesh) {
+            for vertex in &mesh.vertices {
+                let point = gltf_to_body
+                    * instance
+                        .world
+                        .transform_point3(Vec3::from_array(vertex.position));
+                min = min.min(point);
+                max = max.max(point);
+            }
+        }
+    }
+    let size = max - min;
+    let offset = Vec3::new(-(min.x + max.x) * 0.5, -(min.y + max.y) * 0.5, 1.0 - max.z);
+    let conversion = Mat4::from_translation(offset) * Mat4::from_quat(gltf_to_body);
+    for instance in &mut model.instances {
+        instance.world = conversion * instance.world;
+    }
+    (size.x, size.y, size.z)
 }
 
 fn run_headless(
@@ -465,6 +537,40 @@ mod tests {
     }
 
     #[test]
+    fn windowed_physics_is_real_time_by_default() {
+        assert!(physics_fast_forward(Mode::Headless, false));
+        assert!(!physics_fast_forward(Mode::Headless, true));
+        assert!(!physics_fast_forward(Mode::Windowed, false));
+        assert!(!physics_fast_forward(Mode::Windowed, true));
+    }
+
+    #[test]
+    fn detailed_c172_asset_loads_and_aligns_to_the_physics_body() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/aircraft/c172.glb");
+        let mut model = sim_render::GltfSource::from_file(&path).expect("bundled C172 GLB");
+        assert!(model.meshes.len() > 100);
+        assert!(model.materials.len() >= 8);
+        let (length, span, height) = align_c172_model(&mut model);
+        assert!((length - 8.23).abs() < 0.1);
+        assert!((span - 11.32).abs() < 0.1);
+        assert!((height - 2.46).abs() < 0.1);
+        let position = |name: &str| {
+            model
+                .instances
+                .iter()
+                .find(|instance| instance.node_name.as_deref() == Some(name))
+                .expect("named model part")
+                .world
+                .transform_point3(Vec3::ZERO)
+                .x
+        };
+        assert!(
+            position("Propeller") > position("rudder_1"),
+            "model nose must point along the simulator's +X forward axis"
+        );
+    }
+
+    #[test]
     fn cli_parses_full_invocation() {
         let cli = parse_cli(&args(&[
             "--windowed",
@@ -473,6 +579,8 @@ mod tests {
             "25.5",
             "--origin",
             "51.5,-0.12,45",
+            "--heading",
+            "31",
             "--airborne",
             "--ap-heading",
             "270",
@@ -489,6 +597,7 @@ mod tests {
         assert!(cli.realtime);
         assert_eq!(cli.seconds, 25.5);
         assert_eq!(cli.origin, Some((51.5, -0.12, 45.0)));
+        assert_eq!(cli.heading_deg, Some(31.0));
         assert!(cli.airborne);
         assert!(!cli.ground);
         assert_eq!(cli.ap_heading, Some(270.0));
@@ -514,6 +623,7 @@ mod tests {
         assert!(parse_cli(&args(&["--seconds"])).is_err());
         assert!(parse_cli(&args(&["--origin", "1,2"])).is_err());
         assert!(parse_cli(&args(&["--origin", "a,b,c"])).is_err());
+        assert!(parse_cli(&args(&["--heading", "north"])).is_err());
     }
 
     #[test]

@@ -286,7 +286,14 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
         let s = textureSample(occlusion_tex, material_sampler, in.uv).r;
         ao = mix(1.0, s, mat.roughness.z);
     }
-    let sky_amb = vec3<f32>(0.35, 0.45, 0.65) * 0.5 * (0.5 + 0.5 * n.y);
+    // `n` is camera-relative ECEF. Use the renderer's Y-up sky frame for
+    // the hemisphere term; ECEF Y is not local up and changed with longitude.
+    let normal_sky = normalize((frame.sky_from_rel * vec4<f32>(n, 0.0)).xyz);
+    let sky_amb = mix(
+        vec3<f32>(0.12, 0.12, 0.11),
+        vec3<f32>(0.50, 0.62, 0.78),
+        max(normal_sky.y, 0.0),
+    );
     color += sky_amb * albedo_lin * (1.0 - metallic * 0.7) * ao;
 
     // --- emissive ---

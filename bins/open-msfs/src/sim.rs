@@ -140,6 +140,10 @@ pub struct Snapshot {
     pub vertical_speed_mps: f64,
     pub density_kg_m3: f64,
     pub gear_on_ground: bool,
+    /// Actual post-autopilot control positions applied by the flight model.
+    pub controls: ControlInputs,
+    /// Throttle setting used to drive the engine and propeller model.
+    pub throttle: f64,
     pub diagnostics: StepDiagnostics,
 }
 
@@ -162,6 +166,8 @@ impl Default for Snapshot {
             vertical_speed_mps: 0.0,
             density_kg_m3: 1.225,
             gear_on_ground: true,
+            controls: ControlInputs::default(),
+            throttle: 0.0,
             diagnostics: StepDiagnostics {
                 sim_time_s: 0.0,
                 steps: 0,
@@ -187,8 +193,6 @@ pub struct ControlCommand {
     pub flap_step: usize,
     pub brake: f64,
     pub steering: f64,
-    /// Elevator trim offset, rad. Positive trailing edge down = nose down.
-    pub elevator_trim_rad: f64,
     /// When set, the autopilot owns elevator/aileron and its outputs
     /// override the manual surfaces.
     pub autopilot: Option<ApMode>,
@@ -256,13 +260,24 @@ impl SimCore {
     pub fn new(config: SimConfig) -> Result<Self, String> {
         let aircraft_def =
             AircraftDefinition::load_reference_c172().map_err(|e| format!("cfg: {e}"))?;
+        let mass = aircraft_def.flight_model.weight.empty_weight_kg
+            + aircraft_def.flight_model.total_usable_fuel_kg();
 
         let bridge = FrameBridge::new(config.origin);
         let field_altitude_m = config.origin.altitude_m();
+        let gear_layout = sim_physics::world::standard_tricycle_gear(&aircraft_def);
+        let weight_per_leg = mass * sim_physics::G0 / gear_layout.len().max(1) as f64;
+        let static_cg_height_m = gear_layout
+            .iter()
+            .map(|leg| {
+                leg.attach_body.z + leg.strut_length_m
+                    - (weight_per_leg / leg.spring_n_per_m).min(leg.max_compression_m)
+            })
+            .fold(0.15_f64, f64::max);
         let initial_alt = if config.airborne {
             field_altitude_m + config.initial_altitude_m
         } else {
-            field_altitude_m + 0.15 // on the wheels
+            field_altitude_m + static_cg_height_m
         };
         let state = if config.airborne {
             RigidBodyState::level_flight_with_pitch(
@@ -281,9 +296,7 @@ impl SimCore {
             }
         };
 
-        let mass = aircraft_def.flight_model.weight.empty_weight_kg
-            + aircraft_def.flight_model.total_usable_fuel_kg();
-        let cg = DVec3::new(aircraft_def.flight_model.weight.empty_cg_arm_m, 0.0, 0.0);
+        let cg = DVec3::new(aircraft_def.flight_model.weight.empty_cg_x_m, 0.0, 0.0);
         let world =
             PhysicsWorld::new_on_flat_field(&aircraft_def, mass, cg, state, field_altitude_m);
 
@@ -302,6 +315,7 @@ impl SimCore {
 
         let bus = SimVarBus::with_defaults();
         let autopilot = Autopilot::with_defaults();
+        let startup_throttle = if config.airborne { 0.65 } else { 0.0 };
 
         Ok(Self {
             bridge,
@@ -316,7 +330,10 @@ impl SimCore {
             handle: None,
             running: Arc::new(AtomicBool::new(false)),
             snapshot: Arc::new(RwLock::new(Snapshot::default())),
-            command: Arc::new(Mutex::new(ControlCommand::default())),
+            command: Arc::new(Mutex::new(ControlCommand {
+                throttle: startup_throttle,
+                ..ControlCommand::default()
+            })),
             field_altitude_m,
         })
     }
@@ -380,6 +397,7 @@ impl SimCore {
                     kinetic_energy_j: 0.0,
                     diverged: false,
                 };
+                let mut last_throttle = 0.0;
                 while running.load(Ordering::SeqCst) {
                     // real-time pacing (skipped in fast mode)
                     if !fast {
@@ -395,6 +413,7 @@ impl SimCore {
                     }
 
                     let cmd = *command.lock().unwrap_or_else(|e| e.into_inner());
+                    last_throttle = cmd.throttle;
                     apply_command(&mut world, &mut autopilot, &cmd);
 
                     let alt = world.state.position_m.z.max(field_alt);
@@ -410,13 +429,27 @@ impl SimCore {
                     let publish = fast || last_publish.elapsed() >= Duration::from_millis(100);
                     if publish {
                         last_publish = Instant::now();
-                        let snap = build_snapshot(&mut world, &bridge, &isa, field_alt, &diag);
+                        let snap = build_snapshot(
+                            &mut world,
+                            &bridge,
+                            &isa,
+                            field_alt,
+                            &diag,
+                            cmd.throttle,
+                        );
                         publish_simvars(&bus, &snap);
                         *snapshot.write().unwrap_or_else(|e| e.into_inner()) = snap;
                     }
                 }
                 // final publish so no state is lost at shutdown
-                let snap = build_snapshot(&mut world, &bridge, &isa, field_alt, &last_diag);
+                let snap = build_snapshot(
+                    &mut world,
+                    &bridge,
+                    &isa,
+                    field_alt,
+                    &last_diag,
+                    last_throttle,
+                );
                 publish_simvars(&bus, &snap);
                 *snapshot.write().unwrap_or_else(|e| e.into_inner()) = snap;
             })
@@ -448,9 +481,6 @@ fn update_propulsion(
     let power_w = piston.power_at(throttle);
     if power_w <= 0.0 {
         world.external_force_world = DVec3::ZERO;
-        world.prop_omega_radps = 0.0;
-        world.prop_thrust_n = 0.0;
-        world.prop_torque_nm = 0.0;
         return;
     }
     let forward = world.state.orientation * DVec3::X;
@@ -467,10 +497,6 @@ fn update_propulsion(
     let blend = (forward_speed / 15.0).clamp(0.0, 1.0);
     let thrust = static_thrust * (1.0 - blend) + forward_thrust * blend;
     world.external_force_world = forward * thrust;
-    world.prop_omega_radps = omega;
-    world.prop_inertia_kgm2 = propeller.inertia_kg_m2;
-    world.prop_thrust_n = thrust;
-    world.prop_torque_nm = if omega > 1.0 { power_w / omega } else { 0.0 };
 }
 
 impl Drop for SimCore {
@@ -489,8 +515,6 @@ fn apply_command(world: &mut PhysicsWorld, autopilot: &mut Autopilot, cmd: &Cont
         flap_step: cmd.flap_step,
         brake: cmd.brake,
         steering: cmd.steering,
-        elevator_trim_rad: cmd.elevator_trim_rad,
-        prop_thrust_n: world.prop_thrust_n,
     };
     let s = world.state;
     let fwd = s.orientation * DVec3::X;
@@ -536,6 +560,7 @@ fn build_snapshot(
     isa: &IsaModel,
     _field_alt: f64,
     diag: &StepDiagnostics,
+    throttle: f64,
 ) -> Snapshot {
     let s = world.state;
     let altitude_m = s.position_m.z;
@@ -572,6 +597,8 @@ fn build_snapshot(
         vertical_speed_mps: v.z,
         density_kg_m3: sample.density_kg_m3,
         gear_on_ground: on_ground,
+        controls: world.controls,
+        throttle,
         diagnostics: *diag,
     }
 }
@@ -800,7 +827,10 @@ pub fn build_frame_input(
 ) -> FrameInput<'static> {
     let origin = FloatingOrigin::new(Ecef::from(camera_ecef), camera_quat);
     let view = origin.view_matrix();
-    let proj = Mat4::perspective_rh(60.0f32.to_radians(), 16.0 / 9.0, 0.5, 1e7);
+    let mut proj = Mat4::perspective_rh(60.0f32.to_radians(), 16.0 / 9.0, 0.5, 1e7);
+    // WebGPU's framebuffer Y axis points down. Flip clip-space Y so world
+    // up remains screen-up in the rendered view.
+    proj.y_axis.y = -proj.y_axis.y;
     let sky_from_rel = bridge.sky_from_ecef_quat();
     // sun direction: ENU → sky frame (sky = x north, y up, z east? we
     // defined sky_from_ecef via (north, up, east) columns, so a sky
@@ -863,6 +893,51 @@ pub fn start_simconnect_server(bus: SimVarBus, rt: &tokio::runtime::Runtime) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn powered_cruise_spawn_stays_near_level_for_sixty_seconds() {
+        let mut core = SimCore::new(SimConfig {
+            airborne: true,
+            initial_airspeed_mps: 55.0,
+            initial_altitude_m: 1_000.0,
+            ..SimConfig::default()
+        })
+        .expect("sim core");
+        assert!((core.command_handle().lock().unwrap().throttle - 0.65).abs() < 1e-9);
+        let piston = core.aircraft_def.engines.piston;
+        let propeller = core.aircraft_def.engines.propeller;
+        for step in 0..60_000 {
+            let alt = core.world.state.position_m.z.max(0.0);
+            let sample = core.isa.at_geometric_m(alt);
+            let atmosphere = AtmosphereSample {
+                density_kg_m3: sample.density_kg_m3,
+                speed_of_sound_mps: sample.speed_of_sound_mps,
+            };
+            update_propulsion(&mut core.world, 0.65, piston, propeller, &atmosphere);
+            let diag = core.world.step(&atmosphere);
+            assert!(!diag.diverged, "physics diverged at step {step}");
+        }
+        let fwd = core.world.state.orientation * DVec3::X;
+        let right = core.world.state.orientation * DVec3::Y;
+        let up = core.world.state.orientation * DVec3::new(0.0, 0.0, -1.0);
+        let pitch_deg = fwd.z.clamp(-1.0, 1.0).asin().to_degrees();
+        let bank_deg = (-right.z).atan2(up.z).to_degrees();
+        let heading_deg = fwd.x.atan2(fwd.y).to_degrees().rem_euclid(360.0);
+        let heading_error = (heading_deg - 90.0 + 180.0).rem_euclid(360.0) - 180.0;
+        let speed = core.world.state.velocity_mps.length();
+        eprintln!(
+            "60-second spawn: altitude={:.1} m, speed={:.1} m/s, heading={heading_deg:.1}°, bank={bank_deg:.1}°, pitch={pitch_deg:.1}°",
+            core.world.state.position_m.z, speed
+        );
+        assert!(pitch_deg.abs() < 25.0, "pitch departed to {pitch_deg:.1}°");
+        assert!(bank_deg.abs() < 25.0, "bank departed to {bank_deg:.1}°");
+        assert!(
+            heading_error.abs() < 20.0,
+            "heading drifted by {heading_error:.1}°"
+        );
+        assert!(speed > 35.0, "airspeed decayed to {speed:.1} m/s");
+        assert!(core.world.state.position_m.z > 700.0);
+    }
     use crate::ecs::{Aircraft, Camera, Renderable};
 
     #[test]
@@ -1024,6 +1099,16 @@ mod tests {
     }
 
     #[test]
+    fn runway_start_places_all_three_gear_legs_at_static_contact() {
+        let mut core = SimCore::new(SimConfig::default()).expect("core");
+        let contacts = core.world.gear_contacts();
+        assert_eq!(contacts.len(), 3);
+        assert!(contacts.iter().all(|contact| !contact.bottomed_out));
+        assert!(contacts.iter().all(|contact| contact.force_world.z > 0.0));
+        assert!(core.world.state.position_m.z > 0.6);
+    }
+
+    #[test]
     fn throttle_drives_the_aircraft_forward_from_the_runway() {
         let mut core = SimCore::new(SimConfig {
             fast: false,
@@ -1100,11 +1185,7 @@ mod tests {
             let propeller = core.aircraft_def.engines.propeller;
             let mass_kg = core.aircraft_def.flight_model.weight.empty_weight_kg
                 + core.aircraft_def.flight_model.total_usable_fuel_kg();
-            let cg = DVec3::new(
-                core.aircraft_def.flight_model.weight.empty_cg_arm_m,
-                0.0,
-                0.0,
-            );
+            let cg = DVec3::new(core.aircraft_def.flight_model.weight.empty_cg_x_m, 0.0, 0.0);
             let mut world = PhysicsWorld::new_on_flat_field(
                 &core.aircraft_def,
                 mass_kg,
@@ -1155,11 +1236,7 @@ mod tests {
         let propeller = core.aircraft_def.engines.propeller;
         let mass_kg = core.aircraft_def.flight_model.weight.empty_weight_kg
             + core.aircraft_def.flight_model.total_usable_fuel_kg();
-        let cg = DVec3::new(
-            core.aircraft_def.flight_model.weight.empty_cg_arm_m,
-            0.0,
-            0.0,
-        );
+        let cg = DVec3::new(core.aircraft_def.flight_model.weight.empty_cg_x_m, 0.0, 0.0);
         let mut world =
             PhysicsWorld::new_on_flat_field(&core.aircraft_def, mass_kg, cg, core.world.state, 0.0);
         let mut autopilot = Autopilot::with_defaults();

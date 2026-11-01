@@ -26,6 +26,10 @@ fn reference_c172_loads_from_assets() {
     // --- weights --------------------------------------------------------
     assert!((fm.weight.empty_weight_kg - 1685.0 * LB_TO_KG).abs() < 1e-6);
     assert!((fm.weight.max_gross_weight_kg - 2550.0 * LB_TO_KG).abs() < 1e-6);
+    assert!(
+        (fm.weight.empty_cg_x_m - (-38.5 * 0.0254)).abs() < 1e-9,
+        "CG must be represented aft of datum as negative body +X"
+    );
 
     // --- fuel: 57 total / ~56 usable gallons of Avgas --------------------
     let cap_gal: f64 = fm.fuel.iter().map(|t| t.capacity_m3 / GAL_TO_M3).sum();

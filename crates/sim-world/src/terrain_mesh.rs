@@ -59,6 +59,16 @@ impl TerrainMesh {
             .unwrap_or(0.0)
     }
 
+    /// Return one decoded DEM sample by source-grid row and column.
+    pub fn elevation_at_grid(&self, row: u32, col: u32) -> Option<f32> {
+        if row >= self.height || col >= self.width {
+            return None;
+        }
+        self.elevations_m
+            .get((row * self.width + col) as usize)
+            .copied()
+    }
+
     /// Project every DEM sample onto the WGS84 ellipsoid plus its elevation,
     /// then triangulate adjacent samples. Tile identity and geodetic
     /// projection are retained so the same pipeline works in New York,

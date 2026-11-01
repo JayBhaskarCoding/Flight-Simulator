@@ -8,6 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+earcut = "=0.4.11"
 glam.workspace = true
 sim-geo = { path = "../../crates/sim-geo" }
 sim-cfg = { path = "../../crates/sim-cfg" }
@@ -23,3 +24,7 @@ winit.workspace = true
 [[bin]]
 name = "open-msfs"
 path = "src/main.rs"
+
+[[bin]]
+name = "flight-simulator"
+path = "src/launcher.rs"

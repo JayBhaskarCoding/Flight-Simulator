@@ -44,3 +44,15 @@ classes (`motorway`, `trunk`, `primary`, `secondary`, and `tertiary`, including
 their link ways) in the New York regional area, with referenced nodes. It was
 derived from the same 2026-10-31 Overpass response and has the same ODbL
 attribution and share-alike requirements.
+
+The `osm/regions/new-york-buildings.osm` extract contains building outlines
+and referenced nodes for the New York regional area. It was derived from the
+same 2026-10-31 OpenStreetMap Overpass response and is © OpenStreetMap
+contributors under the ODbL; the same attribution and share-alike terms apply.
+
+The `osm/regions/new-york-water.osm` extract contains mapped water areas and
+coastline ways, with their referenced nodes, for the New York region. It was
+retrieved from Overpass on 2026-10-31 for the bounding box 40.40–41.02° N,
+74.45–73.45° W and is © OpenStreetMap contributors under the ODbL. The
+simulator draws closed water areas, multipolygon relations including inner
+holes, and coastal water on the mapped water side of coastline ways.

@@ -15,8 +15,8 @@ pub struct WeightAndBalance {
     pub empty_weight_kg: f64,
     /// Maximum take-off weight, kg.
     pub max_gross_weight_kg: f64,
-    /// Longitudinal station of the empty CG from the reference datum, m.
-    pub empty_cg_arm_m: f64,
+    /// Empty CG coordinate in body axes (+X forward), m.
+    pub empty_cg_x_m: f64,
     /// Forward CG limit as a fraction of MAC (0 = LE of MAC).
     pub cg_forward_mac_frac: f64,
     /// Aft CG limit as a fraction of MAC.
@@ -250,7 +250,7 @@ impl FlightModelDocument {
         let weight = WeightAndBalance {
             empty_weight_kg: empty,
             max_gross_weight_kg: gross,
-            empty_cg_arm_m: wb_sec.f64("empty_cg_arm_ft")? * FT_TO_M,
+            empty_cg_x_m: wb_sec.f64("empty_cg_x_ft")? * FT_TO_M,
             cg_forward_mac_frac: wb_sec.f64("cg_forward_mac_pct")? / 100.0,
             cg_aft_mac_frac: wb_sec.f64("cg_aft_mac_pct")? / 100.0,
         };
@@ -436,7 +436,7 @@ mod tests {
         [WEIGHT_AND_BALANCE]
         empty_weight_lb = 1685
         max_gross_weight_lb = 2550
-        empty_cg_arm_ft = 38.5
+        empty_cg_x_ft = -3.2083333333
         cg_forward_mac_pct = 16
         cg_aft_mac_pct = 47
 

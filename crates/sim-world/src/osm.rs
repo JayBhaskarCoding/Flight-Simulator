@@ -1,10 +1,9 @@
 //! OpenStreetMap vectors: a dependency-free XML pull parser and the
 //! node/way/tag model with road and building extraction.
 //!
-//! Scope (documented, deliberate): `node` and `way` elements are parsed;
-//! `relation` subtrees are skipped wholesale — routing relations are not
-//! needed for terrain roads or building footprints. Node-level `<tag>`
-//! children are ignored the same way. Input is one tile's OSM XML
+//! Scope (documented, deliberate): `node`, `way`, and `relation` elements
+//! are parsed, including relation members needed for area features.
+//! Node-level `<tag>` children are ignored. Input is one tile's OSM XML
 //! fragment (see [`crate::source::FileTileSource`]), which keeps memory
 //! bounded by the tile budget rather than by an entire country export.
 //!
@@ -371,6 +370,35 @@ pub struct OsmWay {
     pub tags: BTreeMap<String, String>,
 }
 
+/// A relation member (`node`, `way`, or nested `relation`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OsmMember {
+    /// Member element kind as encoded by OSM.
+    pub member_type: String,
+    /// Referenced OSM object id.
+    pub reference: i64,
+    /// Multipolygon/routing role, such as `outer` or `inner`.
+    pub role: String,
+}
+
+/// An OSM relation with ordered members and tags.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OsmRelation {
+    /// OSM relation id.
+    pub id: i64,
+    /// Members in source order.
+    pub members: Vec<OsmMember>,
+    /// Tags, sorted by key (deterministic iteration).
+    pub tags: BTreeMap<String, String>,
+}
+
+impl OsmRelation {
+    /// Tag value, if present.
+    pub fn tag(&self, key: &str) -> Option<&str> {
+        self.tags.get(key).map(String::as_str)
+    }
+}
+
 impl OsmWay {
     /// Tag value, if present.
     pub fn tag(&self, key: &str) -> Option<&str> {
@@ -391,13 +419,15 @@ pub struct OsmBounds {
     pub max_lon: f64,
 }
 
-/// Parsed fragment: nodes, ways and optional bounds.
+/// Parsed fragment: nodes, ways, relations, and optional bounds.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct OsmMap {
     /// All nodes by id.
     pub nodes: HashMap<i64, OsmNode>,
     /// All ways in document order.
     pub ways: Vec<OsmWay>,
+    /// All relations in document order.
+    pub relations: Vec<OsmRelation>,
     /// Fragment bounds, when a complete `<bounds>` element was present.
     pub bounds: Option<OsmBounds>,
 }
@@ -424,16 +454,11 @@ pub fn parse_osm(input: &str) -> Result<OsmMap, OsmError> {
     let mut map = OsmMap::default();
     let mut parser = XmlParser::new(input);
     let mut cur_way: Option<OsmWay> = None;
-    // Skip depth for out-of-scope subtrees (relations).
-    let mut skip_depth: usize = 0;
+    let mut cur_relation: Option<OsmRelation> = None;
 
     while let Some(ev) = parser.next_event() {
         match ev? {
             XmlEvent::Start { name, attrs } => {
-                if skip_depth > 0 {
-                    skip_depth += 1;
-                    continue;
-                }
                 match &*name {
                     "node" => {
                         let id = req_attr_i64(&attrs, "node", "id")?;
@@ -456,7 +481,28 @@ pub fn parse_osm(input: &str) -> Result<OsmMap, OsmError> {
                         });
                     }
                     "relation" => {
-                        skip_depth = 1;
+                        if cur_relation.is_some() {
+                            return Err(OsmError::Xml {
+                                message: "nested <relation> elements".into(),
+                                offset: parser.offset(),
+                            });
+                        }
+                        cur_relation = Some(OsmRelation {
+                            id: req_attr_i64(&attrs, "relation", "id")?,
+                            members: Vec::new(),
+                            tags: BTreeMap::new(),
+                        });
+                    }
+                    "member" => {
+                        let relation = cur_relation.as_mut().ok_or_else(|| OsmError::Xml {
+                            message: "<member> outside of a <relation>".into(),
+                            offset: parser.offset(),
+                        })?;
+                        relation.members.push(OsmMember {
+                            member_type: req_attr(&attrs, "member", "type")?.to_string(),
+                            reference: req_attr_i64(&attrs, "member", "ref")?,
+                            role: req_attr(&attrs, "member", "role")?.to_string(),
+                        });
                     }
                     "nd" => {
                         let way = cur_way.as_mut().ok_or_else(|| OsmError::Xml {
@@ -466,7 +512,11 @@ pub fn parse_osm(input: &str) -> Result<OsmMap, OsmError> {
                         way.refs.push(req_attr_i64(&attrs, "nd", "ref")?);
                     }
                     "tag" => {
-                        if let Some(way) = cur_way.as_mut() {
+                        if let Some(relation) = cur_relation.as_mut() {
+                            let k = req_attr(&attrs, "tag", "k")?;
+                            let v = req_attr(&attrs, "tag", "v")?;
+                            relation.tags.insert(k.to_string(), v.to_string());
+                        } else if let Some(way) = cur_way.as_mut() {
                             let k = req_attr(&attrs, "tag", "k")?;
                             let v = req_attr(&attrs, "tag", "v")?;
                             way.tags.insert(k.to_string(), v.to_string());
@@ -484,18 +534,12 @@ pub fn parse_osm(input: &str) -> Result<OsmMap, OsmError> {
                     }
                     _ => {
                         // Unknown element (osm, metadata, ...): its End is
-                        // ignored below; children with known names would be
-                        // misread, so unknown *containers* are skipped too
-                        // only when they can hold content we care about —
-                        // in practice only <relation> does, handled above.
+                        // ignored below; relevant child elements should be
+                        // added explicitly above.
                     }
                 }
             }
             XmlEvent::End(name) => {
-                if skip_depth > 0 {
-                    skip_depth -= 1;
-                    continue;
-                }
                 if &*name == "way" {
                     let way = cur_way.take().ok_or_else(|| OsmError::Xml {
                         message: "stray </way>".into(),
@@ -508,6 +552,12 @@ pub fn parse_osm(input: &str) -> Result<OsmMap, OsmError> {
                         });
                     }
                     map.ways.push(way);
+                } else if &*name == "relation" {
+                    let relation = cur_relation.take().ok_or_else(|| OsmError::Xml {
+                        message: "stray </relation>".into(),
+                        offset: parser.offset(),
+                    })?;
+                    map.relations.push(relation);
                 }
             }
             XmlEvent::Text(_) => {}
@@ -520,9 +570,9 @@ pub fn parse_osm(input: &str) -> Result<OsmMap, OsmError> {
             offset: parser.offset(),
         });
     }
-    if skip_depth > 0 {
+    if let Some(relation) = cur_relation {
         return Err(OsmError::Xml {
-            message: "unexpected end of input inside skipped subtree".into(),
+            message: format!("unexpected end of input inside relation {}", relation.id),
             offset: parser.offset(),
         });
     }
@@ -791,11 +841,17 @@ mod tests {
 "#;
 
     #[test]
-    fn fixture_parses_nodes_ways_bounds_and_skips_relations() {
+    fn fixture_parses_nodes_ways_relations_and_bounds() {
         let map = parse_osm(FIXTURE).unwrap();
         let (nodes, ways) = map.counts();
         assert_eq!(nodes, 5);
         assert_eq!(ways, 2);
+        assert_eq!(map.relations.len(), 1);
+        assert_eq!(map.relations[0].id, 99);
+        assert_eq!(map.relations[0].tag("type"), Some("multipolygon"));
+        assert_eq!(map.relations[0].members[0].member_type, "way");
+        assert_eq!(map.relations[0].members[0].reference, 10);
+        assert_eq!(map.relations[0].members[0].role, "outer");
         assert_eq!(
             map.bounds,
             Some(OsmBounds {

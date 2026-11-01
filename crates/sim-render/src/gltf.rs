@@ -126,6 +126,8 @@ struct Scene {
 #[serde(rename_all = "camelCase")]
 struct Node {
     #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
     mesh: Option<usize>,
     #[serde(default)]
     children: Vec<usize>,
@@ -510,8 +512,9 @@ pub enum AlphaMode {
 /// One node instance of a mesh, with its world matrix (mesh-local →
 /// scene space; for this renderer the caller re-bases it into
 /// camera-relative f32 before drawing).
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct GltfInstance {
+    pub node_name: Option<String>,
     pub mesh: usize,
     pub material_override: Option<usize>,
     pub world: Mat4,
@@ -1305,9 +1308,13 @@ impl<'a> GltfSource<'a> {
         if !doc.asset.version.starts_with("2.") {
             return Err(GltfError::Unsupported("asset version", 0));
         }
-        // No required extension is implemented — fail on the first
-        // one (the list may hold many; reporting the first is enough).
-        if let Some(ext) = doc.extensions_required.first() {
+        // KHR_mesh_quantization uses the normalized integer accessor path
+        // implemented below. Other required extensions must fail loudly.
+        if let Some(ext) = doc
+            .extensions_required
+            .iter()
+            .find(|ext| ext.as_str() != "KHR_mesh_quantization")
+        {
             return Err(GltfError::UnsupportedExtension(ext.clone()));
         }
 
@@ -1494,6 +1501,7 @@ impl<'a> GltfSource<'a> {
                                 })?;
                         let material_override = doc.meshes[mesh_idx].primitives[pi].material;
                         instances.push(GltfInstance {
+                            node_name: node.name.clone(),
                             mesh: mesh_id,
                             material_override,
                             world,
@@ -1537,6 +1545,18 @@ pub fn parse_bytes(bytes: &[u8]) -> Result<GltfModel, GltfError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mesh_quantization_extension_uses_normalized_accessor_support() {
+        let json = br#"{"asset":{"version":"2.0"},"extensionsRequired":["KHR_mesh_quantization"]}"#;
+        assert!(parse_bytes(json).is_ok());
+
+        let unsupported = br#"{"asset":{"version":"2.0"},"extensionsRequired":["EXT_unknown"]}"#;
+        assert!(matches!(
+            parse_bytes(unsupported),
+            Err(GltfError::UnsupportedExtension(name)) if name == "EXT_unknown"
+        ));
+    }
 
     #[test]
     fn base64_known_vectors() {

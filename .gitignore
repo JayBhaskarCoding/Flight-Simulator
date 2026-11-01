@@ -4,3 +4,4 @@ Cargo.lock.orig
 *.log
 .DS_Store
 __pycache__/
+assets/world/osm/regions/new-york-buildings.osm
