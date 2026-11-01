@@ -108,6 +108,28 @@ BLOB_WALK = {
     ("ndk-sys", "0.6.0+11769913"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/ndk-sys-0.6.0+11769913"),
     ("heck", "0.4.1"): ("ClickHouse/rust_vendor", "heck-0.4.1"),
     ("embedded-io", "0.6.1"): ("ClickHouse/rust_vendor", "embedded-io-0.6.1"),
+    # Second lockfile-generation wave (Windows-side dependency bumps).
+    ("android_system_properties", "0.1.6"): (
+        "recastsystems/woof",
+        "tools/rustwx/vendor/crates-io/android_system_properties-0.1.6",
+    ),
+    ("core-graphics", "0.23.2"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/core-graphics-0.23.2"),
+    ("errno", "0.3.14"): ("ClickHouse/rust_vendor", "errno-0.3.14"),
+    ("hermit-abi", "0.5.3"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/hermit-abi-0.5.3"),
+    ("id-arena", "2.3.0"): ("ClickHouse/rust_vendor", "id-arena-2.3.0"),
+    ("libm", "0.2.16"): ("ClickHouse/rust_vendor", "libm-0.2.16"),
+    ("miniz_oxide", "0.9.1"): ("ClickHouse/rust_vendor", "miniz_oxide-0.9.1"),
+    ("profiling", "1.0.18"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/profiling-1.0.18"),
+    ("rustc-hash", "1.1.0"): ("ClickHouse/rust_vendor", "rustc-hash-1.1.0"),
+    ("stable_deref_trait", "1.2.1"): ("ClickHouse/rust_vendor", "stable_deref_trait-1.2.1"),
+    ("strum", "0.26.3"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/strum-0.26.3"),
+    ("strum_macros", "0.26.4"): ("recastsystems/woof", "tools/rustwx/vendor/crates-io/strum_macros-0.26.4"),
+    ("tokio-macros", "2.7.2"): ("ClickHouse/rust_vendor", "tokio-macros-2.7.2"),
+    ("wayland-scanner", "0.31.11"): (
+        "recastsystems/woof",
+        "tools/rustwx/vendor/crates-io/wayland-scanner-0.31.11",
+    ),
+    ("windows-sys", "0.61.2"): ("ClickHouse/rust_vendor", "windows-sys-0.61.2"),
 }
 
 

@@ -80,7 +80,8 @@
   },
   "bytemuck_derive": {
     "repo": "Lokathor/bytemuck",
-    "tag": "v1.12.1"
+    "subdir": "derive",
+    "tag": "bytemuck_derive-v1.12.1"
   },
   "bytes": {
     "repo": "tokio-rs/bytes",
@@ -270,6 +271,10 @@
     "subdir": "dpi",
     "tag": "dpi_v0.1.2"
   },
+  "earcut": {
+    "repo": "georust/earcut",
+    "tag": "v0.4.11"
+  },
   "either": {
     "repo": "bluss/either",
     "tag": "1.19.0"
@@ -325,7 +330,8 @@
   },
   "foreign-types-shared": {
     "repo": "sfackler/foreign-types",
-    "tag": "v0.3.1"
+    "subdir": "foreign-types-shared",
+    "tag": "foreign-types-shared-v0.3.1"
   },
   "form_urlencoded": "servo/rust-url",
   "futures": "rust-lang/futures-rs",
@@ -382,11 +388,12 @@
   "gpu-alloc": {
     "repo": "zakarumych/gpu-alloc",
     "subdir": "gpu-alloc",
-    "tag": "200a1ec57a53a573d0fcada9dcb9a79786952267"
+    "tag": "61020bdcb4eb04fca6bbf748aeb9570e859236e0"
   },
   "gpu-alloc-types": {
     "repo": "zakarumych/gpu-alloc",
-    "tag": "200a1ec57a53a573d0fcada9dcb9a79786952267"
+    "subdir": "types",
+    "tag": "61020bdcb4eb04fca6bbf748aeb9570e859236e0"
   },
   "gpu-allocator": {
     "repo": "Traverse-Research/gpu-allocator",
@@ -458,7 +465,7 @@
   },
   "jpeg-decoder": {
     "repo": "image-rs/jpeg-decoder",
-    "tag": "v0.3.1"
+    "tag": "eb2d7c0f6a2d0298aba7a7f8b9ca1440353e8f8c"
   },
   "js-sys": {
     "repo": "rustwasm/wasm-bindgen",
@@ -495,8 +502,9 @@
   },
   "libredox-hook": "redox-os/libredox-hook",
   "libsqlite3-sys": {
-    "repo": "aosp-mirror-neo/platform_external_rust_crates_libsqlite3-sys",
-    "tag": "4f346279844acd466a1e91bfc88c444ad73b7dd4"
+    "repo": "rusqlite/rusqlite",
+    "subdir": "libsqlite3-sys",
+    "tag": "v0.32.1"
   },
   "libz-rs": "trifectatechfoundation/zlib-rs",
   "libz-rs-sys": "trifectatechfoundation/zlib-rs",
@@ -555,7 +563,8 @@
   },
   "ndk": {
     "repo": "rust-mobile/ndk",
-    "tag": "cargo-apk-0.9.0"
+    "subdir": "ndk",
+    "tag": "ndk-0.9.0"
   },
   "ndk-context": {
     "repo": "rust-mobile/ndk-context",
@@ -563,7 +572,9 @@
   },
   "ndk-sys": {
     "repo": "rust-mobile/ndk",
-    "tag": "ndk-sys-0.5.0"
+    "subdir": "ndk-sys",
+    "tag": "ndk-sys-0.6.0",
+    "version": "0.6.0+11769913"
   },
   "nix": {
     "repo": "nix-rust/nix",
@@ -1001,6 +1012,12 @@
     "repo": "toml-rs/toml",
     "tag": "v0.19.9"
   },
+  "toml_parser": {
+    "repo": "toml-rs/toml",
+    "subdir": "crates/toml_parser",
+    "tag": "toml_parser-v1.1.5",
+    "version": "1.1.5+spec-1.1.0"
+  },
   "tracing": {
     "repo": "tokio-rs/tracing",
     "tag": "tracing-0.1.44"
@@ -1069,14 +1086,16 @@
   "wasm-encoder": {
     "repo": "bytecodealliance/wasm-tools",
     "subdir": "crates/wasm-encoder",
-    "tag": "v1.262.0"
+    "tag": "v1.215.0",
+    "version": "0.215.0"
   },
   "wasm-metadata": "bytecodealliance/wasm-tools",
   "wasmi": "wasmi-labs/wasmi",
   "wasmparser": {
     "repo": "bytecodealliance/wasm-tools",
     "subdir": "crates/wasmparser",
-    "tag": "v1.262.0"
+    "tag": "v1.215.0",
+    "version": "0.215.0"
   },
   "wasmprinter": {
     "repo": "bytecodealliance/wasm-tools",
