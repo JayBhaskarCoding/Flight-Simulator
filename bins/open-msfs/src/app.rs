@@ -27,7 +27,7 @@ use std::{
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
-use winit::keyboard::{Key, NamedKey};
+use winit::keyboard::{Key, KeyCode, NamedKey, PhysicalKey};
 use winit::window::{Window, WindowId};
 
 /// Preferred present formats (must be sRGB — the tonemap shader emits
@@ -36,6 +36,81 @@ const TARGET_FORMAT_PREFERENCE: [wgpu::TextureFormat; 2] = [
     wgpu::TextureFormat::Bgra8UnormSrgb,
     wgpu::TextureFormat::Rgba8UnormSrgb,
 ];
+
+/// Throttle lever travel per key press (also repeats while held via
+/// winit's key-repeat `Pressed` events), clamped to `0..=1`.
+const THROTTLE_STEP: f64 = 0.05;
+
+/// A normalized flight-control binding, shared by the logical-key
+/// (`Key::Character` / arrows) and physical-key (`KeyCode`) paths so
+/// both spellings drive the exact same `ControlCommand` fields.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ControlBinding {
+    /// Elevator nose-up (W / ArrowUp).
+    PitchUp,
+    /// Elevator nose-down (S / ArrowDown).
+    PitchDown,
+    /// Aileron roll left (A / ArrowLeft).
+    RollLeft,
+    /// Aileron roll right (D / ArrowRight).
+    RollRight,
+    /// Rudder + nosewheel steering left (Q).
+    YawLeft,
+    /// Rudder + nosewheel steering right (E).
+    YawRight,
+    /// Throttle lever up (R / T).
+    ThrottleUp,
+    /// Throttle lever down (F / Y).
+    ThrottleDown,
+    /// Wheel brakes (B).
+    Brake,
+    /// Flap notch cycle, 0 → 1 → 2 → 3 → 0 (G).
+    Flaps,
+    /// Autopilot altitude-hold toggle (P).
+    ApToggle,
+}
+
+impl ControlBinding {
+    /// Layout-dependent character mapping (kept as the test-facing and
+    /// fallback path).
+    fn from_str(ch: &str) -> Option<Self> {
+        Some(match ch {
+            "w" | "W" => Self::PitchUp,
+            "s" | "S" => Self::PitchDown,
+            "a" | "A" => Self::RollLeft,
+            "d" | "D" => Self::RollRight,
+            "q" | "Q" => Self::YawLeft,
+            "e" | "E" => Self::YawRight,
+            "r" | "R" => Self::ThrottleUp,
+            "t" | "T" => Self::ThrottleUp,
+            "f" | "F" => Self::ThrottleDown,
+            "y" | "Y" => Self::ThrottleDown,
+            "b" | "B" => Self::Brake,
+            "g" | "G" => Self::Flaps,
+            "p" | "P" => Self::ApToggle,
+            _ => return None,
+        })
+    }
+
+    /// Physical-position mapping: immune to keyboard layout so the
+    /// keys the pilot presses always reach the same control surface.
+    fn from_code(code: KeyCode) -> Option<Self> {
+        Some(match code {
+            KeyCode::KeyW | KeyCode::ArrowUp => Self::PitchUp,
+            KeyCode::KeyS | KeyCode::ArrowDown => Self::PitchDown,
+            KeyCode::KeyA | KeyCode::ArrowLeft => Self::RollLeft,
+            KeyCode::KeyD | KeyCode::ArrowRight => Self::RollRight,
+            KeyCode::KeyQ => Self::YawLeft,
+            KeyCode::KeyE => Self::YawRight,
+            KeyCode::KeyR | KeyCode::KeyT => Self::ThrottleUp,
+            KeyCode::KeyF | KeyCode::KeyY => Self::ThrottleDown,
+            KeyCode::KeyB => Self::Brake,
+            KeyCode::KeyG => Self::Flaps,
+            KeyCode::KeyP => Self::ApToggle,
+            _ => return None,
+        })
+    }
+}
 const TERRAIN_PATCH_RADIUS: i32 = 7;
 const TERRAIN_TEXTURE_SIZE: u32 = 768;
 
@@ -706,9 +781,11 @@ fn build_osm_water_overlays(
                 frame,
                 local,
                 &sea_level,
-                &mut triangulator,
-                &mut vertices,
-                &mut indices,
+                &mut WaterMesh {
+                    triangulator: &mut triangulator,
+                    vertices: &mut vertices,
+                    indices: &mut indices,
+                },
             );
             rendered_water_ways.insert(way.id);
         }
@@ -745,9 +822,11 @@ fn build_osm_water_overlays(
                     frame,
                     local,
                     &sea_level,
-                    &mut triangulator,
-                    &mut vertices,
-                    &mut indices,
+                    &mut WaterMesh {
+                        triangulator: &mut triangulator,
+                        vertices: &mut vertices,
+                        indices: &mut indices,
+                    },
                 );
             }
             if vertices.len() >= WATER_MESH_VERTEX_CHUNK {
@@ -839,10 +918,14 @@ fn relation_rings(
     rings
 }
 
+/// `(outer ring node ids, outer way ids, inner ring node ids)` —
+/// a multipolygon's water geometry as assembled from OSM relations.
+type RelationWaterPolygons = Vec<(Vec<i64>, Vec<i64>, Vec<Vec<i64>>)>;
+
 fn relation_water_polygons(
     map: &sim_world::osm::OsmMap,
     relation: &sim_world::osm::OsmRelation,
-) -> Vec<(Vec<i64>, Vec<i64>, Vec<Vec<i64>>)> {
+) -> RelationWaterPolygons {
     let outers = relation_rings(map, relation, "outer");
     let expected_inner_ways = relation
         .members
@@ -903,15 +986,20 @@ fn point_in_geographic_ring(point: (f64, f64), ring: &[(f64, f64)]) -> bool {
     inside
 }
 
+/// Mutable triangulation target shared by the water-polygon builder.
+struct WaterMesh<'a> {
+    triangulator: &'a mut earcut::Earcut<f64>,
+    vertices: &'a mut Vec<GpuVertex>,
+    indices: &'a mut Vec<u32>,
+}
+
 fn append_water_polygon(
     outer: &[(f64, f64)],
     holes: &[Vec<(f64, f64)>],
     frame: &EnuFrame,
     local: &impl Fn(f64, f64) -> Vec3,
     sea_level: &impl Fn(f64, f64) -> Vec3,
-    triangulator: &mut earcut::Earcut<f64>,
-    vertices: &mut Vec<GpuVertex>,
-    indices: &mut Vec<u32>,
+    mesh: &mut WaterMesh<'_>,
 ) {
     if outer.len() < 4 || outer.first() != outer.last() {
         return;
@@ -935,7 +1023,7 @@ fn append_water_polygon(
         .map(|&(lat, lon)| local(lat, lon))
         .collect();
     let Some(triangles) =
-        triangulate_polygon_with_holes(&terrain_points, &hole_starts, triangulator)
+        triangulate_polygon_with_holes(&terrain_points, &hole_starts, mesh.triangulator)
     else {
         return;
     };
@@ -946,8 +1034,8 @@ fn append_water_polygon(
         .sum::<f32>()
         / outer.len() as f32
         + 0.75;
-    let first = vertices.len() as u32;
-    vertices.extend(all_points.iter().map(|&(lat, lon)| {
+    let first = mesh.vertices.len() as u32;
+    mesh.vertices.extend(all_points.iter().map(|&(lat, lon)| {
         let p = frame
             .ecef_to_enu(&WGS84.geodetic_to_ecef(&LatLonAlt::from_degrees(
                 lat,
@@ -958,7 +1046,7 @@ fn append_water_polygon(
             .as_vec3();
         water_vertex(p)
     }));
-    indices.extend(triangles.into_iter().map(|i| first + i));
+    mesh.indices.extend(triangles.into_iter().map(|i| first + i));
 }
 
 fn water_vertex(position: Vec3) -> GpuVertex {
@@ -1502,48 +1590,96 @@ impl App {
         res.renderer.resize(width, height);
     }
 
+    /// Fold a key event into the shared control command.
+    ///
+    /// Returns the *new* command state for a handled key: held keys
+    /// deflect, released keys spring back to neutral. The update is
+    /// written through to [`WindowInput::command`] inside the same lock
+    /// that read it, so nothing can be dropped between "computed" and
+    /// "written".
     fn handle_key(&self, key: &Key, pressed: bool) -> Option<ControlCommand> {
-        // Returns the *new* command state for a handled key: held keys
-        // deflect, released keys spring back to neutral.
-        let mut cmd = *self.input.command.lock().ok()?;
+        let binding = match key {
+            Key::Named(NamedKey::ArrowUp) => ControlBinding::PitchUp,
+            Key::Named(NamedKey::ArrowDown) => ControlBinding::PitchDown,
+            Key::Named(NamedKey::ArrowLeft) => ControlBinding::RollLeft,
+            Key::Named(NamedKey::ArrowRight) => ControlBinding::RollRight,
+            Key::Character(c) => ControlBinding::from_str(c.as_str())?,
+            _ => return None,
+        };
+        self.apply_binding(binding, pressed)
+    }
+
+    /// Physical-position key path (`KeyCode`). winit always populates
+    /// `physical_key`, so this reaches the bindings even when the
+    /// layout turns W/S/A/D into different characters.
+    fn handle_physical_key(&self, physical: &PhysicalKey, pressed: bool) -> Option<ControlCommand> {
+        let PhysicalKey::Code(code) = physical else {
+            return None;
+        };
+        let binding = ControlBinding::from_code(*code)?;
+        self.apply_binding(binding, pressed)
+    }
+
+    /// Apply `binding` under a single `self.input.command` lock.
+    ///
+    /// The mutex is recovered from poisoning (a past panic can never
+    /// brick the keyboard) and the read-modify-write is atomic, so the
+    /// physics thread's 1 kHz read always observes a consistent state.
+    fn apply_binding(&self, binding: ControlBinding, pressed: bool) -> Option<ControlCommand> {
+        let mut guard = self.input.command.lock().unwrap_or_else(|e| e.into_inner());
+        let mut cmd = *guard;
         let max = crate::sim::MAX_ELEVATOR_RAD;
         let ail = crate::sim::MAX_AILERON_RAD;
         let rud = crate::sim::MAX_RUDDER_RAD;
-        let ch = match key {
-            Key::Character(c) => c.as_str(),
-            _ => return None,
-        };
-        match ch {
-            "r" | "R" if pressed => cmd.throttle = (cmd.throttle + 0.05).min(1.0),
-            "f" | "F" if pressed => cmd.throttle = (cmd.throttle - 0.05).max(0.0),
-            "w" | "W" => cmd.elevator_rad = if pressed { -max } else { 0.0 },
-            "s" | "S" => cmd.elevator_rad = if pressed { max } else { 0.0 },
-            "a" | "A" => cmd.aileron_rad = if pressed { -ail } else { 0.0 },
-            "d" | "D" => cmd.aileron_rad = if pressed { ail } else { 0.0 },
-            "q" | "Q" => {
+        match binding {
+            ControlBinding::PitchUp => cmd.elevator_rad = if pressed { -max } else { 0.0 },
+            ControlBinding::PitchDown => cmd.elevator_rad = if pressed { max } else { 0.0 },
+            ControlBinding::RollLeft => cmd.aileron_rad = if pressed { -ail } else { 0.0 },
+            ControlBinding::RollRight => cmd.aileron_rad = if pressed { ail } else { 0.0 },
+            ControlBinding::YawLeft => {
                 cmd.rudder_rad = if pressed { -rud } else { 0.0 };
                 cmd.steering = if pressed { -1.0 } else { 0.0 };
             }
-            "e" | "E" => {
+            ControlBinding::YawRight => {
                 cmd.rudder_rad = if pressed { rud } else { 0.0 };
                 cmd.steering = if pressed { 1.0 } else { 0.0 };
             }
-            "b" | "B" => cmd.brake = if pressed { 1.0 } else { 0.0 },
-            "g" | "G" if pressed => cmd.flap_step = (cmd.flap_step + 1) % 4,
-            "p" | "P" if pressed => {
+            ControlBinding::Brake => cmd.brake = if pressed { 1.0 } else { 0.0 },
+            ControlBinding::ThrottleUp => {
+                if !pressed {
+                    return None;
+                }
+                cmd.throttle = (cmd.throttle + THROTTLE_STEP).clamp(0.0, 1.0);
+            }
+            ControlBinding::ThrottleDown => {
+                if !pressed {
+                    return None;
+                }
+                cmd.throttle = (cmd.throttle - THROTTLE_STEP).clamp(0.0, 1.0);
+            }
+            ControlBinding::Flaps => {
+                if !pressed {
+                    return None;
+                }
+                cmd.flap_step = (cmd.flap_step + 1) % 4;
+            }
+            ControlBinding::ApToggle => {
+                if !pressed {
+                    return None;
+                }
                 if cmd.autopilot.is_some() {
                     cmd.autopilot = None;
                     cmd.ap_altitude_ft = None;
                     cmd.ap_heading_deg = None;
                 } else {
-                    let snap = self.input.snapshot.read().ok()?;
+                    let snap = self.input.snapshot.read().unwrap_or_else(|e| e.into_inner());
                     cmd.autopilot = Some(ApMode::AltitudeHold);
                     cmd.ap_altitude_ft = Some(snap.altitude_m * 3.280_839_895);
                     cmd.ap_heading_deg = None;
                 }
             }
-            _ => return None,
         }
+        *guard = cmd;
         Some(cmd)
     }
 }
@@ -1887,29 +2023,19 @@ impl ApplicationHandler for App {
                             return;
                         }
                     }
-                    let camera_nudge = match event.logical_key {
-                        Key::Named(NamedKey::ArrowLeft) => Some((-0.12, 0.0)),
-                        Key::Named(NamedKey::ArrowRight) => Some((0.12, 0.0)),
-                        Key::Named(NamedKey::ArrowUp) => Some((0.0, 0.12)),
-                        Key::Named(NamedKey::ArrowDown) => Some((0.0, -0.12)),
-                        _ => None,
-                    };
-                    if let Some((yaw_delta, pitch_delta)) = camera_nudge {
-                        (self.camera_yaw, self.camera_pitch) = orbit_camera_nudge(
-                            self.camera_yaw,
-                            self.camera_pitch,
-                            yaw_delta,
-                            pitch_delta,
-                        );
-                        return;
-                    }
                 }
-                if let Some(cmd) =
-                    self.handle_key(&event.logical_key, event.state == ElementState::Pressed)
+                // Flight controls: try the physical key position first
+                // (layout-proof), fall back to the logical character /
+                // arrow key. Both paths write the new command through
+                // to the shared mutex before returning, so the physics
+                // thread picks every press and release up on its next
+                // 1 kHz tick.
+                let pressed = event.state == ElementState::Pressed;
+                if self
+                    .handle_physical_key(&event.physical_key, pressed)
+                    .is_none()
                 {
-                    if let Ok(mut guard) = self.input.command.lock() {
-                        *guard = cmd;
-                    }
+                    let _ = self.handle_key(&event.logical_key, pressed);
                 }
             }
             WindowEvent::RedrawRequested => {
@@ -2205,10 +2331,6 @@ fn orbit_camera_drag(yaw: f64, pitch: f64, delta_x: f64, delta_y: f64) -> (f64, 
         yaw + delta_x * 0.006,
         (pitch - delta_y * 0.006).clamp(-0.15, 1.20),
     )
-}
-
-fn orbit_camera_nudge(yaw: f64, pitch: f64, yaw_delta: f64, pitch_delta: f64) -> (f64, f64) {
-    (yaw + yaw_delta, (pitch + pitch_delta).clamp(-0.15, 1.20))
 }
 
 fn zoom_camera_distance(distance: f64, scroll_amount: f64) -> f64 {
@@ -2530,15 +2652,6 @@ mod tests {
         assert!(zoom_camera_distance(distance, -1.0) > distance);
         assert_eq!(zoom_camera_distance(distance, 100.0), 5.0);
         assert_eq!(zoom_camera_distance(distance, -100.0), 80.0);
-    }
-
-    #[test]
-    fn arrow_camera_controls_orbit_and_clamp_elevation() {
-        let (yaw, pitch) = orbit_camera_nudge(0.0, 0.2, 0.12, -0.12);
-        assert!((yaw - 0.12).abs() < 1e-12);
-        assert!((pitch - 0.08).abs() < 1e-12);
-        assert_eq!(orbit_camera_nudge(0.0, 1.19, 0.0, 0.12).1, 1.20);
-        assert_eq!(orbit_camera_nudge(0.0, -0.14, 0.0, -0.12).1, -0.15);
     }
 
     #[test]
@@ -3126,5 +3239,209 @@ mod tests {
             .iter()
             .chain(&taxiway.0.vertices)
             .all(|vertex| vertex.position.iter().all(|value| value.is_finite())));
+    }
+
+    #[test]
+    fn physical_keys_deflect_and_center_via_shared_command() {
+        let command = Arc::new(Mutex::new(ControlCommand::default()));
+        let input = WindowInput {
+            command: Arc::clone(&command),
+            snapshot: Arc::new(RwLock::new(Snapshot::default())),
+        };
+        let core = SimCore::new(SimConfig::default()).expect("core");
+        let app = App::new(
+            input,
+            &core,
+            DVec3::new(0.0, 0.5, 0.8),
+            None,
+            None,
+            Ecs::new(),
+        );
+        let shared =
+            || command.lock().unwrap_or_else(|e| e.into_inner()).elevator_rad;
+        let elev = crate::sim::MAX_ELEVATOR_RAD;
+        let ail = crate::sim::MAX_AILERON_RAD;
+
+        // Physical W deflects the elevator AND writes through to the
+        // shared command without any manual store.
+        let cmd = app
+            .handle_physical_key(&PhysicalKey::Code(KeyCode::KeyW), true)
+            .expect("physical w");
+        assert!((cmd.elevator_rad + elev).abs() < 1e-9);
+        assert!((shared() + elev).abs() < 1e-9);
+        // Release springs back to neutral, again write-through.
+        app.handle_physical_key(&PhysicalKey::Code(KeyCode::KeyW), false)
+            .expect("physical w release");
+        assert_eq!(shared(), 0.0);
+
+        // A and the left arrow both roll left.
+        let cmd = app
+            .handle_physical_key(&PhysicalKey::Code(KeyCode::KeyA), true)
+            .expect("physical a");
+        assert!((cmd.aileron_rad + ail).abs() < 1e-12);
+        app.handle_physical_key(&PhysicalKey::Code(KeyCode::KeyA), false)
+            .expect("physical a release");
+        let cmd = app
+            .handle_physical_key(&PhysicalKey::Code(KeyCode::ArrowLeft), true)
+            .expect("physical left");
+        assert!((cmd.aileron_rad + ail).abs() < 1e-12);
+        app.handle_physical_key(&PhysicalKey::Code(KeyCode::ArrowLeft), false)
+            .expect("physical left release");
+        assert_eq!(
+            command.lock().unwrap_or_else(|e| e.into_inner()).aileron_rad,
+            0.0
+        );
+
+        // Q/E drive rudder + nosewheel steering together.
+        let cmd = app
+            .handle_physical_key(&PhysicalKey::Code(KeyCode::KeyQ), true)
+            .expect("physical q");
+        assert_eq!(cmd.steering, -1.0);
+        assert!((cmd.rudder_rad + crate::sim::MAX_RUDDER_RAD).abs() < 1e-12);
+        app.handle_physical_key(&PhysicalKey::Code(KeyCode::KeyQ), false)
+            .expect("physical q release");
+        assert_eq!(
+            command.lock().unwrap_or_else(|e| e.into_inner()).steering,
+            0.0
+        );
+
+        // B brakes while held.
+        app.handle_physical_key(&PhysicalKey::Code(KeyCode::KeyB), true)
+            .expect("physical b");
+        assert_eq!(
+            command.lock().unwrap_or_else(|e| e.into_inner()).brake,
+            1.0
+        );
+        app.handle_physical_key(&PhysicalKey::Code(KeyCode::KeyB), false)
+            .expect("physical b release");
+        assert_eq!(
+            command.lock().unwrap_or_else(|e| e.into_inner()).brake,
+            0.0
+        );
+
+        // Unidentified / unmapped keys stay out of the command path.
+        assert!(app
+            .handle_physical_key(&PhysicalKey::Code(KeyCode::Escape), true)
+            .is_none());
+        assert!(app
+            .handle_physical_key(
+                &PhysicalKey::Unidentified(winit::keyboard::NativeKeyCode::Unidentified),
+                true
+            )
+            .is_none());
+    }
+
+    #[test]
+    fn arrow_and_alias_keys_share_the_flight_bindings() {
+        let command = Arc::new(Mutex::new(ControlCommand::default()));
+        let input = WindowInput {
+            command: Arc::clone(&command),
+            snapshot: Arc::new(RwLock::new(Snapshot::default())),
+        };
+        let core = SimCore::new(SimConfig::default()).expect("core");
+        let app = App::new(
+            input,
+            &core,
+            DVec3::new(0.0, 0.5, 0.8),
+            None,
+            None,
+            Ecs::new(),
+        );
+        let elev = crate::sim::MAX_ELEVATOR_RAD;
+        let ail = crate::sim::MAX_AILERON_RAD;
+
+        // Logical arrow keys deflect like W/S/A/D and center on release.
+        let cmd = app
+            .handle_key(&Key::Named(NamedKey::ArrowUp), true)
+            .expect("arrow up");
+        assert!((cmd.elevator_rad + elev).abs() < 1e-9);
+        app.handle_key(&Key::Named(NamedKey::ArrowUp), false)
+            .expect("arrow up release");
+        let cmd = app
+            .handle_key(&Key::Named(NamedKey::ArrowDown), true)
+            .expect("arrow down");
+        assert!((cmd.elevator_rad - elev).abs() < 1e-9);
+        app.handle_key(&Key::Named(NamedKey::ArrowDown), false)
+            .expect("arrow down release");
+        let cmd = app
+            .handle_key(&Key::Named(NamedKey::ArrowRight), true)
+            .expect("arrow right");
+        assert!((cmd.aileron_rad - ail).abs() < 1e-12);
+        app.handle_key(&Key::Named(NamedKey::ArrowRight), false)
+            .expect("arrow right release");
+        assert_eq!(command.lock().unwrap().aileron_rad, 0.0);
+
+        // T/Y are throttle aliases for R/F.
+        app.handle_key(&Key::Character("t".into()), true)
+            .expect("throttle up alias");
+        assert_eq!(command.lock().unwrap().throttle, THROTTLE_STEP);
+        app.handle_key(&Key::Character("y".into()), true)
+            .expect("throttle down alias");
+        assert_eq!(command.lock().unwrap().throttle, 0.0);
+        assert!(app
+            .handle_key(&Key::Character("t".into()), false)
+            .is_none());
+    }
+
+    #[test]
+    fn logical_and_physical_paths_map_to_the_same_bindings() {
+        let pairs = [
+            ("w", KeyCode::KeyW),
+            ("s", KeyCode::KeyS),
+            ("a", KeyCode::KeyA),
+            ("d", KeyCode::KeyD),
+            ("q", KeyCode::KeyQ),
+            ("e", KeyCode::KeyE),
+            ("r", KeyCode::KeyR),
+            ("t", KeyCode::KeyT),
+            ("f", KeyCode::KeyF),
+            ("y", KeyCode::KeyY),
+            ("b", KeyCode::KeyB),
+            ("g", KeyCode::KeyG),
+            ("p", KeyCode::KeyP),
+        ];
+        for (ch, code) in pairs {
+            let logical = ControlBinding::from_str(ch).expect("logical binding");
+            assert_eq!(Some(logical), ControlBinding::from_code(code), "{ch}");
+            let upper = ch.to_uppercase();
+            assert_eq!(ControlBinding::from_str(&upper), Some(logical), "{ch} upper");
+        }
+    }
+
+    #[test]
+    fn input_survives_command_lock_poisoning() {
+        let command = Arc::new(Mutex::new(ControlCommand::default()));
+        let input = WindowInput {
+            command: Arc::clone(&command),
+            snapshot: Arc::new(RwLock::new(Snapshot::default())),
+        };
+        let core = SimCore::new(SimConfig::default()).expect("core");
+        let app = App::new(
+            input,
+            &core,
+            DVec3::new(0.0, 0.5, 0.8),
+            None,
+            None,
+            Ecs::new(),
+        );
+
+        // Poison the shared mutex: a panicked thread while holding it.
+        let poison = Arc::clone(&command);
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+            let _guard = poison.lock().unwrap();
+            panic!("poison the command mutex");
+        }));
+        assert!(Mutex::is_poisoned(&command), "mutex must be poisoned");
+
+        // A poisoned lock must not brick the keyboard: the binding is
+        // applied and written through so the physics thread sees it.
+        let elev = crate::sim::MAX_ELEVATOR_RAD;
+        let cmd = app
+            .handle_key(&Key::Character("w".into()), true)
+            .expect("handled despite poison");
+        assert!((cmd.elevator_rad + elev).abs() < 1e-9);
+        assert!(
+            (command.lock().unwrap_or_else(|e| e.into_inner()).elevator_rad + elev).abs() < 1e-9
+        );
     }
 }

@@ -92,7 +92,14 @@ mod tests {
                 "aircraft/c172.glb"
             ]
         );
-        assert_eq!(super::simulator_filename(true), "open-msfs-updated.exe");
-        assert_eq!(super::simulator_filename(false), "open-msfs.exe");
+        // The packaged names are Windows-only; other targets always use
+        // the plain simulator binary (see `simulator_filename`).
+        let (updated, plain) = if cfg!(windows) {
+            ("open-msfs-updated.exe", "open-msfs.exe")
+        } else {
+            ("open-msfs", "open-msfs")
+        };
+        assert_eq!(super::simulator_filename(true), updated);
+        assert_eq!(super::simulator_filename(false), plain);
     }
 }

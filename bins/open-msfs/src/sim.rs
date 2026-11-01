@@ -1274,4 +1274,71 @@ mod tests {
             world.state.velocity_mps.length()
         );
     }
+
+    /// Task-verification: applying `ControlCommand` through the same
+    /// per-tick path the 1000 Hz thread uses must visibly change the
+    /// flight trajectory — elevator changes pitch, throttle changes
+    /// airspeed, and the aircraft ends up somewhere else entirely.
+    #[test]
+    fn control_commands_alter_the_flight_trajectory() {
+        let cfg = SimConfig {
+            airborne: true,
+            initial_airspeed_mps: 50.0,
+            initial_altitude_m: 500.0,
+            ..SimConfig::default()
+        };
+        let atm = AtmosphereSample {
+            density_kg_m3: 1.19,
+            speed_of_sound_mps: 340.0,
+        };
+        let run = |cmd: ControlCommand| {
+            let mut core = SimCore::new(cfg.clone()).expect("core");
+            let mut autopilot = Autopilot::with_defaults();
+            let piston = core.aircraft_def.engines.piston;
+            let propeller = core.aircraft_def.engines.propeller;
+            for _ in 0..1000 {
+                apply_command(&mut core.world, &mut autopilot, &cmd);
+                update_propulsion(&mut core.world, cmd.throttle, piston, propeller, &atm);
+                core.world.step(&atm);
+            }
+            core.world.state
+        };
+
+        let baseline = run(ControlCommand::default());
+        let pitched = run(ControlCommand {
+            elevator_rad: -MAX_ELEVATOR_RAD, // W: full nose-up
+            ..ControlCommand::default()
+        });
+        let powered = run(ControlCommand {
+            throttle: 1.0,
+            ..ControlCommand::default()
+        });
+
+        let pitch = |s: &RigidBodyState| (s.orientation * DVec3::X).z.clamp(-1.0, 1.0).asin();
+        let (base_pitch, cmd_pitch) = (pitch(&baseline), pitch(&pitched));
+        assert!(
+            (cmd_pitch - base_pitch).abs() > 0.02,
+            "elevator must deflect the pitch: baseline {base_pitch:.4} rad vs commanded {cmd_pitch:.4} rad"
+        );
+
+        let (base_speed, pow_speed) = (
+            baseline.velocity_mps.length(),
+            powered.velocity_mps.length(),
+        );
+        assert!(
+            pow_speed - base_speed > 0.5,
+            "throttle must change airspeed: baseline {base_speed:.2} vs powered {pow_speed:.2} m/s"
+        );
+
+        assert!(
+            (pitched.position_m - baseline.position_m).length() > 0.5,
+            "the trajectory must diverge under elevator input (Δ = {:.2} m)",
+            (pitched.position_m - baseline.position_m).length()
+        );
+        assert!(
+            (powered.position_m - baseline.position_m).length() > 0.5,
+            "the trajectory must diverge under throttle input (Δ = {:.2} m)",
+            (powered.position_m - baseline.position_m).length()
+        );
+    }
 }
