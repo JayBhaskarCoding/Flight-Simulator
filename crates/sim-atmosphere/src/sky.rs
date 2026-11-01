@@ -85,7 +85,10 @@ impl Default for SkyParams {
 impl SkyParams {
     /// Parameters with an explicit sun direction.
     pub fn with_sun(sun_direction: DVec3) -> Self {
-        Self { sun_direction: sun_direction.normalize(), ..Self::default() }
+        Self {
+            sun_direction: sun_direction.normalize(),
+            ..Self::default()
+        }
     }
 }
 
@@ -196,13 +199,14 @@ fn optical_depths(
 
 /// Full RGB transmittance from a point at `altitude_m` along `cos_zenith`
 /// (1 = straight up), by direct quadrature (reference for the LUT).
-fn transmittance_quad(
-    altitude_m: f64,
-    cos_zenith: f64,
-    params: &SkyParams,
-) -> [f64; 3] {
+fn transmittance_quad(altitude_m: f64, cos_zenith: f64, params: &SkyParams) -> [f64; 3] {
     let r = params.planet_radius_m + altitude_m.max(0.0);
-    let (t_ground, t_top) = ray_intervals(r, cos_zenith, params.planet_radius_m, r + params.atmosphere_height_m);
+    let (t_ground, t_top) = ray_intervals(
+        r,
+        cos_zenith,
+        params.planet_radius_m,
+        r + params.atmosphere_height_m,
+    );
     if let Some(tg) = t_ground {
         if tg < t_top || t_top <= 0.0 {
             return [0.0; 3]; // blocked by the planet
@@ -237,7 +241,12 @@ impl SkyLuts {
         let transmittance = Self::build_transmittance(params);
         let sky_view = Self::build_sky_view(params, &transmittance);
         let aerial = Self::build_aerial(params, &transmittance);
-        Self { params: *params, transmittance, sky_view, aerial }
+        Self {
+            params: *params,
+            transmittance,
+            sky_view,
+            aerial,
+        }
     }
 
     /// The parameters these LUTs were built with.
@@ -284,8 +293,9 @@ impl SkyLuts {
                     let depth = optical_depths(origin, dir, t_top, 32, params);
                     let mut v = [0.0f64; 3];
                     for (c, lam) in CHANNEL_NM.iter().enumerate() {
-                        let tau =
-                            rayleigh_beta(*lam) * depth[0] + ext * depth[1] + OZONE_BETA[c] * depth[2];
+                        let tau = rayleigh_beta(*lam) * depth[0]
+                            + ext * depth[1]
+                            + OZONE_BETA[c] * depth[2];
                         v[c] = (-tau).exp();
                     }
                     v
@@ -339,7 +349,11 @@ impl SkyLuts {
         if t_top <= 0.0 {
             return 0.0;
         }
-        let dir = DVec3::new((1.0 - cos_zenith * cos_zenith).max(0.0).sqrt(), cos_zenith, 0.0);
+        let dir = DVec3::new(
+            (1.0 - cos_zenith * cos_zenith).max(0.0).sqrt(),
+            cos_zenith,
+            0.0,
+        );
         let origin = DVec3::new(0.0, r, 0.0);
         let depth = optical_depths(origin, dir, t_top, 64, params);
         let tau = rayleigh_beta(wavelength_nm) * depth[0]
@@ -380,7 +394,11 @@ impl SkyLuts {
         };
 
         let sun = params.sun_direction.normalize();
-        let cam = DVec3::new(0.0, params.planet_radius_m + params.observer_altitude_m, 0.0);
+        let cam = DVec3::new(
+            0.0,
+            params.planet_radius_m + params.observer_altitude_m,
+            0.0,
+        );
 
         let mut out = Vec::with_capacity(SKY_VIEW_H * SKY_VIEW_W);
         for iy in 0..SKY_VIEW_H {
@@ -415,16 +433,14 @@ impl SkyLuts {
                     Some(tg) if tg < t_top => tg,
                     _ => t_top,
                 };
-                let radiance = integrate_single_scatter(
-                    cam,
-                    dir,
-                    t_end,
-                    params,
-                    &sample_trans,
-                    p_r,
-                    p_m,
-                );
-                out.push([radiance[0] as f32, radiance[1] as f32, radiance[2] as f32, 1.0]);
+                let radiance =
+                    integrate_single_scatter(cam, dir, t_end, params, &sample_trans, p_r, p_m);
+                out.push([
+                    radiance[0] as f32,
+                    radiance[1] as f32,
+                    radiance[2] as f32,
+                    1.0,
+                ]);
             }
         }
         out
@@ -501,7 +517,11 @@ impl SkyLuts {
         };
 
         let sun = params.sun_direction.normalize();
-        let cam = DVec3::new(0.0, params.planet_radius_m + params.observer_altitude_m, 0.0);
+        let cam = DVec3::new(
+            0.0,
+            params.planet_radius_m + params.observer_altitude_m,
+            0.0,
+        );
         let _ = sun;
 
         let max_dist = 80_000.0f64;
@@ -527,19 +547,14 @@ impl SkyLuts {
                     Some(tg) if tg < dist => tg,
                     _ => dist,
                 };
-                let (trans_rgb, radiance) = integrate_aerial(
-                    cam, dir, t_end, params, &sample_trans, p_r, p_m,
-                );
+                let (trans_rgb, radiance) =
+                    integrate_aerial(cam, dir, t_end, params, &sample_trans, p_r, p_m);
                 let t32 = [
                     trans_rgb[0] as f32,
                     trans_rgb[1] as f32,
                     trans_rgb[2] as f32,
                 ];
-                let r32 = [
-                    radiance[0] as f32,
-                    radiance[1] as f32,
-                    radiance[2] as f32,
-                ];
+                let r32 = [radiance[0] as f32, radiance[1] as f32, radiance[2] as f32];
                 out.push((t32, r32));
             }
         }
@@ -640,7 +655,8 @@ where
             let t_view = {
                 let mut v = [0.0f64; 3];
                 for (c, lam) in CHANNEL_NM.iter().enumerate() {
-                    let tau = rayleigh_beta(*lam) * depth[0] + ext * depth[1] + OZONE_BETA[c] * depth[2];
+                    let tau =
+                        rayleigh_beta(*lam) * depth[0] + ext * depth[1] + OZONE_BETA[c] * depth[2];
                     v[c] = (-tau).exp();
                 }
                 v
@@ -688,7 +704,9 @@ where
     let total_depth = optical_depths(origin, dir, t_end, steps, params);
     let mut trans = [0.0f64; 3];
     for (c, lam) in CHANNEL_NM.iter().enumerate() {
-        let tau = rayleigh_beta(*lam) * total_depth[0] + ext * total_depth[1] + OZONE_BETA[c] * total_depth[2];
+        let tau = rayleigh_beta(*lam) * total_depth[0]
+            + ext * total_depth[1]
+            + OZONE_BETA[c] * total_depth[2];
         trans[c] = (-tau).exp();
     }
 
@@ -705,9 +723,8 @@ where
             let t_view = {
                 let mut v = [0.0f64; 3];
                 for (c, lam) in CHANNEL_NM.iter().enumerate() {
-                    let tau = rayleigh_beta(*lam) * depth[0]
-                        + ext * depth[1]
-                        + OZONE_BETA[c] * depth[2];
+                    let tau =
+                        rayleigh_beta(*lam) * depth[0] + ext * depth[1] + OZONE_BETA[c] * depth[2];
                     v[c] = (-tau).exp();
                 }
                 v
@@ -748,7 +765,10 @@ mod tests {
         assert!(t680 > t440, "t680 {t680} <= t440 {t440}");
         let t_high = luts.monochromatic_transmittance(10_000.0, 1.0, 550.0);
         let t_low = luts.monochromatic_transmittance(0.0, 1.0, 550.0);
-        assert!(t_high > t_low, "alt transmittance should rise: {t_high} vs {t_low}");
+        assert!(
+            t_high > t_low,
+            "alt transmittance should rise: {t_high} vs {t_low}"
+        );
     }
 
     #[test]
@@ -778,7 +798,10 @@ mod tests {
         let luts = SkyLuts::new(&params);
         let rgb = luts.sky_view_rgb(DVec3::Y);
         let (r, g, b) = (rgb[0], rgb[1], rgb[2]);
-        assert!(r > 0.0 && g > 0.0 && b > 0.0, "non-positive radiance {rgb:?}");
+        assert!(
+            r > 0.0 && g > 0.0 && b > 0.0,
+            "non-positive radiance {rgb:?}"
+        );
         let ratio = b / r;
         assert!(ratio > 2.0, "blue/red ratio {ratio}");
     }
@@ -832,7 +855,11 @@ mod tests {
                 t_far[c],
                 t_near[c]
             );
-            assert!((0.0..=1.0).contains(&t_far[c]), "t out of range {}", t_far[c]);
+            assert!(
+                (0.0..=1.0).contains(&t_far[c]),
+                "t out of range {}",
+                t_far[c]
+            );
         }
     }
 

@@ -27,6 +27,7 @@ use open_msfs::sim::{
     spawn_aircraft_and_camera, start_simconnect_server, system_build_draws, system_camera_follow,
     system_sync_aircraft, ControlCommand, SimConfig, SimCore, Snapshot,
 };
+use std::path::Path;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 use wgpu::TextureFormat;
@@ -38,8 +39,10 @@ struct Cli {
     realtime: bool,
     simconnect: bool,
     model: Option<String>,
+    world_data: Option<String>,
     origin: Option<(f64, f64, f64)>,
     airborne: bool,
+    ground: bool,
     ap_heading: Option<f64>,
     ap_altitude_ft: Option<f64>,
 }
@@ -58,8 +61,10 @@ impl Default for Cli {
             realtime: false,
             simconnect: false,
             model: None,
+            world_data: None,
             origin: None,
             airborne: false,
+            ground: false,
             ap_heading: None,
             ap_altitude_ft: None,
         }
@@ -79,11 +84,13 @@ fn print_usage() {
          simulation:\n\
            --realtime           pace the 1000 Hz physics thread to wall clock\n\
            --airborne           start airborne (--origin ALT metres above field)\n\
+           --ground             start on the ground instead of the NYC flight start\n\
            --origin LAT,LON,ALT field origin in degrees/metres [40,-74,0]\n\
            --ap-heading DEG     engage heading hold autopilot\n\
            --ap-alt FT          engage altitude hold autopilot\n\
            --tz MINUTES         civil UTC offset for the sun [330]\n\
            --model PATH.glb     aircraft model to render at the pose\n\
+           --world-data PATH    local sim-world tile root (loads origin DEM)\n\
            --simconnect         serve OpenSimConnect on port 45170\n\
            --help               show this help"
     );
@@ -96,7 +103,9 @@ fn parse_cli(args: &[String]) -> Result<Cli, String> {
         let a = &args[i];
         let next = |i: &mut usize| -> Result<String, String> {
             *i += 1;
-            args.get(*i).cloned().ok_or_else(|| format!("{a} needs a value"))
+            args.get(*i)
+                .cloned()
+                .ok_or_else(|| format!("{a} needs a value"))
         };
         match a.as_str() {
             "--help" | "-h" => {
@@ -107,24 +116,38 @@ fn parse_cli(args: &[String]) -> Result<Cli, String> {
             "--headless" => cli.mode = Mode::Headless,
             "--realtime" => cli.realtime = true,
             "--airborne" => cli.airborne = true,
+            "--ground" => cli.ground = true,
             "--simconnect" => cli.simconnect = true,
             "--seconds" => {
-                cli.seconds = next(&mut i)?.parse().map_err(|e| format!("--seconds: {e}"))?
+                cli.seconds = next(&mut i)?
+                    .parse()
+                    .map_err(|e| format!("--seconds: {e}"))?
             }
             "--model" => cli.model = Some(next(&mut i)?),
+            "--world-data" => cli.world_data = Some(next(&mut i)?),
             "--ap-heading" => {
-                cli.ap_heading =
-                    Some(next(&mut i)?.parse().map_err(|e| format!("--ap-heading: {e}"))?)
+                cli.ap_heading = Some(
+                    next(&mut i)?
+                        .parse()
+                        .map_err(|e| format!("--ap-heading: {e}"))?,
+                )
             }
             "--ap-alt" => {
-                cli.ap_altitude_ft =
-                    Some(next(&mut i)?.parse().map_err(|e| format!("--ap-alt: {e}"))?)
+                cli.ap_altitude_ft = Some(
+                    next(&mut i)?
+                        .parse()
+                        .map_err(|e| format!("--ap-alt: {e}"))?,
+                )
             }
             "--origin" => {
                 let raw = next(&mut i)?;
                 let parts: Vec<f64> = raw
                     .split(',')
-                    .map(|p| p.trim().parse::<f64>().map_err(|e| format!("--origin: {e}")))
+                    .map(|p| {
+                        p.trim()
+                            .parse::<f64>()
+                            .map_err(|e| format!("--origin: {e}"))
+                    })
                     .collect::<Result<_, _>>()?;
                 if parts.len() != 3 {
                     return Err(format!("--origin expects LAT,LON,ALT — got {raw:?}"));
@@ -134,6 +157,9 @@ fn parse_cli(args: &[String]) -> Result<Cli, String> {
             other => return Err(format!("unknown argument {other:?} (try --help)")),
         }
         i += 1;
+    }
+    if cli.airborne && cli.ground {
+        return Err("--airborne and --ground cannot be used together".into());
     }
     Ok(cli)
 }
@@ -160,6 +186,16 @@ fn run(cli: Cli) -> Result<(), String> {
         fast: !cli.realtime,
         ..SimConfig::default()
     };
+    // A ground-level spawn at the default Lower Manhattan coordinate can
+    // intersect buildings. Give the normal windowed experience clear air
+    // around the aircraft; --ground keeps the runway/ground-start option.
+    let default_nyc_flight =
+        cli.mode == Mode::Windowed && !cli.ground && !cli.airborne && cli.origin.is_none();
+    if default_nyc_flight {
+        config.airborne = true;
+        config.initial_altitude_m = 1_000.0;
+        config.initial_airspeed_mps = 55.0;
+    }
     if let Some((lat, lon, alt)) = cli.origin {
         config.origin = sim_geo::LatLonAlt::from_degrees(lat, lon, alt);
         if cli.airborne {
@@ -167,6 +203,45 @@ fn run(cli: Cli) -> Result<(), String> {
             config.initial_airspeed_mps = 55.0;
         }
     }
+
+    let default_world_data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/world");
+    let world_data = cli
+        .world_data
+        .as_ref()
+        .map(std::path::PathBuf::from)
+        .or_else(|| {
+            (cli.mode == Mode::Windowed && default_world_data.is_dir())
+                .then_some(default_world_data)
+        });
+
+    let terrain = match world_data.as_deref() {
+        Some(root) if cli.mode == Mode::Windowed => {
+            let asset = app::load_terrain_tile(root, config.origin)?;
+            println!(
+                "terrain: DEM face={} level={} x={} y={} ({}x{} samples), field {:.1}m",
+                asset.mesh.id.face,
+                asset.mesh.id.level,
+                asset.mesh.id.x,
+                asset.mesh.id.y,
+                asset.mesh.width,
+                asset.mesh.height,
+                asset.field_elevation_m,
+            );
+            config.origin = sim_geo::LatLonAlt::new(
+                config.origin.latitude_rad(),
+                config.origin.longitude_rad(),
+                asset.field_elevation_m,
+            );
+            Some(asset)
+        }
+        Some(_) if cli.world_data.is_some() => {
+            eprintln!(
+                "--world-data is currently used by --windowed mode; ignoring in headless mode"
+            );
+            None
+        }
+        _ => None,
+    };
 
     let mut core = SimCore::new(config.clone())?;
     let snapshot = core.snapshot_handle();
@@ -188,10 +263,14 @@ fn run(cli: Cli) -> Result<(), String> {
         }
         None => None,
     };
-
     // autopilot engagement from the CLI
     {
         let mut guard = command.lock().unwrap_or_else(|e| e.into_inner());
+        if default_nyc_flight {
+            guard.throttle = 0.65;
+            guard.autopilot = Some(sim_avionics::ApMode::AltitudeHold);
+            guard.ap_altitude_ft = Some(config.initial_altitude_m * 3.280_839_895);
+        }
         if let Some(h) = cli.ap_heading {
             guard.autopilot = Some(sim_avionics::ApMode::HeadingHold);
             guard.ap_heading_deg = Some(h);
@@ -202,6 +281,12 @@ fn run(cli: Cli) -> Result<(), String> {
             guard.ap_altitude_ft = Some(a);
             println!("autopilot: ALTITUDE HOLD {a} ft");
         }
+    }
+
+    if cli.mode == Mode::Windowed {
+        println!(
+            "controls: W/S pitch, A/D roll, Q/E rudder, R/F throttle, B brake, G flaps, P autopilot/manual, Esc quit"
+        );
     }
 
     // OpenSimConnect (shares the bus — clones are shallow)
@@ -225,7 +310,12 @@ fn run(cli: Cli) -> Result<(), String> {
     match cli.mode {
         Mode::Headless => {
             let result = run_headless(
-                &cli, &mut core, &mut ecs, &snapshot, &command, model.as_ref(),
+                &cli,
+                &mut core,
+                &mut ecs,
+                &snapshot,
+                &command,
+                model.as_ref(),
             );
             core.shutdown();
             drop(tokio_rt);
@@ -241,6 +331,7 @@ fn run(cli: Cli) -> Result<(), String> {
                 &core,
                 sky_sun,
                 model,
+                terrain,
                 ecs,
             );
             let result = app.run();
@@ -285,7 +376,11 @@ fn run_headless(
                 snap.indicated_airspeed_mps * 1.943_844,
                 snap.heading_deg,
                 snap.pitch_deg,
-                if snap.gear_on_ground { "  [ground]" } else { "" }
+                if snap.gear_on_ground {
+                    "  [ground]"
+                } else {
+                    ""
+                }
             );
         }
 
@@ -299,8 +394,7 @@ fn run_headless(
                     .unwrap_or((snap.position_enu, snap.orientation_enu));
                 let cam_ecef = core.bridge.enu_to_ecef(cp);
                 let cam_quat = core.bridge.orientation_to_ecef(cq);
-                let draws =
-                    system_build_draws(ecs, &core.bridge, cam_ecef, cam_quat, Some(model));
+                let draws = system_build_draws(ecs, &core.bridge, cam_ecef, cam_quat, Some(model));
                 println!(
                     "final state: t={:.2}s lat={:.5} lon={:.5} alt={:.1}m ias={:.1}kt \
                      heading={:.1}° bank={:.1}° draws={} diverged={}",
@@ -386,6 +480,8 @@ mod tests {
             "3500",
             "--model",
             "assets/plane.glb",
+            "--world-data",
+            "assets/world",
             "--simconnect",
         ]))
         .unwrap();
@@ -394,10 +490,22 @@ mod tests {
         assert_eq!(cli.seconds, 25.5);
         assert_eq!(cli.origin, Some((51.5, -0.12, 45.0)));
         assert!(cli.airborne);
+        assert!(!cli.ground);
         assert_eq!(cli.ap_heading, Some(270.0));
         assert_eq!(cli.ap_altitude_ft, Some(3500.0));
         assert_eq!(cli.model.as_deref(), Some("assets/plane.glb"));
+        assert_eq!(cli.world_data.as_deref(), Some("assets/world"));
         assert!(cli.simconnect);
+    }
+
+    #[test]
+    fn ground_start_is_explicit_and_conflicts_with_airborne() {
+        assert!(
+            parse_cli(&args(&["--windowed", "--ground"]))
+                .unwrap()
+                .ground
+        );
+        assert!(parse_cli(&args(&["--ground", "--airborne"])).is_err());
     }
 
     #[test]
@@ -410,8 +518,15 @@ mod tests {
 
     #[test]
     fn headless_run_completes_and_reports() {
-        let cli = Cli { seconds: 1.0, realtime: false, ..Cli::default() };
-        let config = SimConfig { fast: true, ..SimConfig::default() };
+        let cli = Cli {
+            seconds: 1.0,
+            realtime: false,
+            ..Cli::default()
+        };
+        let config = SimConfig {
+            fast: true,
+            ..SimConfig::default()
+        };
         let mut core = SimCore::new(config).expect("core");
         let snapshot = core.snapshot_handle();
         let command = core.command_handle();
@@ -425,7 +540,12 @@ mod tests {
 
     #[test]
     fn headless_airborne_run_stays_airborne() {
-        let cli = Cli { seconds: 2.0, realtime: false, airborne: true, ..Cli::default() };
+        let cli = Cli {
+            seconds: 2.0,
+            realtime: false,
+            airborne: true,
+            ..Cli::default()
+        };
         let config = SimConfig {
             fast: true,
             airborne: true,
@@ -444,6 +564,10 @@ mod tests {
         assert!(res.is_ok(), "{res:?}");
         let snap = snapshot.read().unwrap().clone();
         assert!(snap.sim_time_s >= 2.0);
-        assert!(snap.altitude_m > 400.0, "should stay near release altitude: {}", snap.altitude_m);
+        assert!(
+            snap.altitude_m > 400.0,
+            "should stay near release altitude: {}",
+            snap.altitude_m
+        );
     }
 }

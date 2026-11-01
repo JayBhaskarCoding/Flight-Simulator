@@ -108,7 +108,11 @@ fn pos3(sec: &crate::parser::Section, key: &str) -> CfgResult<glam::DVec3> {
     let v = sec.vec_n(key, 3)?;
     // cfg body axes: x forward, y right, z down (already SI-agnostic
     // in feet; converted here).
-    Ok(glam::DVec3::new(v[0] * FT_TO_M, v[1] * FT_TO_M, v[2] * FT_TO_M))
+    Ok(glam::DVec3::new(
+        v[0] * FT_TO_M,
+        v[1] * FT_TO_M,
+        v[2] * FT_TO_M,
+    ))
 }
 
 impl AirplaneGeometry {
@@ -230,7 +234,11 @@ impl AirplaneGeometry {
         if area <= 0.0 || span <= 0.0 || root <= 0.0 {
             return Err(CfgError::Range {
                 file: sec.file.clone(),
-                line: sec.find(&p("area")).or(sec.find(&pl("area"))).map(|e| e.line).unwrap_or(1),
+                line: sec
+                    .find(&p("area"))
+                    .or(sec.find(&pl("area")))
+                    .map(|e| e.line)
+                    .unwrap_or(1),
                 key: p("area"),
                 message: "tail area/span/chord must be positive".into(),
             });
@@ -240,7 +248,11 @@ impl AirplaneGeometry {
             span_m: span * FT_TO_M,
             root_chord_m: root * FT_TO_M,
             tip_chord_m: tip * FT_TO_M,
-            sweep_rad: deg_key(sec, &p("quarter_chord_sweep"), deg_key(sec, &pl("sweep"), 0.0)?)?,
+            sweep_rad: deg_key(
+                sec,
+                &p("quarter_chord_sweep"),
+                deg_key(sec, &pl("sweep"), 0.0)?,
+            )?,
             dihedral_rad: deg_key(sec, &p("dihedral"), 0.0)?,
             incidence_rad: deg_key(sec, &p("incidence"), 0.0)?,
             washout_rad: deg_key(sec, &p("twist"), 0.0)?,
@@ -259,7 +271,6 @@ impl AirplaneGeometry {
         self.wing.mean_aero_chord()
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -328,7 +339,10 @@ mod tests {
         let g = geom();
         let mac = g.mac_m();
         // trapezoid MAC must sit between tip and root chord
-        assert!(mac > g.wing.tip_chord_m && mac < g.wing.root_chord_m, "mac={mac}");
+        assert!(
+            mac > g.wing.tip_chord_m && mac < g.wing.root_chord_m,
+            "mac={mac}"
+        );
         // rectangular MAC = chord
         let rect = WingGeometry {
             name: "t",
@@ -345,7 +359,11 @@ mod tests {
         assert!((rect.mean_aero_chord() - 2.0).abs() < 1e-12);
         assert!((rect.aspect_ratio() - 5.0).abs() < 1e-12);
         // λ = 0.5: MAC = (2/3)(1+0.5+0.25)/1.5 · cr = 0.7778 cr
-        let trap = WingGeometry { root_chord_m: 3.0, tip_chord_m: 1.5, ..rect };
+        let trap = WingGeometry {
+            root_chord_m: 3.0,
+            tip_chord_m: 1.5,
+            ..rect
+        };
         assert!((trap.mean_aero_chord() - 3.0 * (2.0 / 3.0) * 1.75 / 1.5).abs() < 1e-12);
     }
 

@@ -3,9 +3,7 @@
 //! published type data.
 
 use sim_cfg::geometry::{GAL_TO_M3, LB_TO_KG};
-use sim_cfg::{
-    discretize, total_area, AircraftDefinition, Discretization,
-};
+use sim_cfg::{discretize, total_area, AircraftDefinition, Discretization};
 
 #[test]
 fn reference_c172_loads_from_assets() {
@@ -41,7 +39,10 @@ fn reference_c172_loads_from_assets() {
     assert!(fm.limits.service_ceiling_m() > 4200.0);
 
     // --- engines ---------------------------------------------------------
-    assert_eq!(ac.engines.piston.max_power_w.round(), (180.0f64 * 745.699871).round());
+    assert_eq!(
+        ac.engines.piston.max_power_w.round(),
+        (180.0f64 * 745.699871).round()
+    );
     assert!((ac.engines.propeller.diameter_m - 76.0 * 0.0254).abs() < 1e-12);
     assert!(!ac.engines.propeller.constant_speed);
 
@@ -66,7 +67,9 @@ fn reference_c172_wing_discretizes_to_published_area() {
     );
     // both sides present, symmetric about the centerline
     assert_eq!(elements.len(), 12 * 4 * 2);
-    assert!(elements.iter().all(|e| e.quarter_chord_center.x.is_finite()));
+    assert!(elements
+        .iter()
+        .all(|e| e.quarter_chord_center.x.is_finite()));
     // washout makes tip incidence smaller than root incidence
     let tip_i = elements
         .iter()
@@ -79,8 +82,14 @@ fn reference_c172_wing_discretizes_to_published_area() {
     assert!(tip_i < root_i, "tip {tip_i} vs root {root_i}");
     // 1.5 deg root incidence, -3 deg washout; first strip centre at
     // t = 0.0417 -> 1.375 deg, last strip centre at t = 0.958 -> -1.375 deg
-    assert!(root_i < 1.45f64.to_radians() && root_i > 1.3f64.to_radians(), "{root_i}");
-    assert!(tip_i < (-1.3f64).to_radians() && tip_i > (-1.45f64).to_radians(), "{tip_i}");
+    assert!(
+        root_i < 1.45f64.to_radians() && root_i > 1.3f64.to_radians(),
+        "{root_i}"
+    );
+    assert!(
+        tip_i < (-1.3f64).to_radians() && tip_i > (-1.45f64).to_radians(),
+        "{tip_i}"
+    );
 }
 
 #[test]

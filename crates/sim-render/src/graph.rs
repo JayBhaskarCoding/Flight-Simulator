@@ -20,9 +20,7 @@
 use crate::gltf::{AlphaMode, FilterMode, GltfMaterial, GltfModel, GltfSampler, WrapMode};
 use crate::lut::LutPayloads;
 use crate::noise::{generate_noise_volume, NoiseVolume};
-use crate::types::{
-    CloudUniforms, DrawItem, DrawUniforms, FrameUniforms, GpuMaterial, GpuVertex,
-};
+use crate::types::{CloudUniforms, DrawItem, DrawUniforms, FrameUniforms, GpuMaterial, GpuVertex};
 use bytemuck::cast_slice;
 use glam::{DMat4, DQuat, DVec3, Mat4, Quat, Vec3};
 use sim_atmosphere::sky::{
@@ -119,7 +117,9 @@ const PARK_VTABLE: RawWakerVTable = RawWakerVTable::new(
 fn block_on<F: std::future::Future>(fut: F) -> F::Output {
     let mut fut = Box::pin(fut);
     let waker = {
-        let arc = Arc::new(ParkThread { thread: std::thread::current() });
+        let arc = Arc::new(ParkThread {
+            thread: std::thread::current(),
+        });
         let raw = RawWaker::new(Arc::into_raw(arc) as *const (), &PARK_VTABLE);
         unsafe { Waker::from_raw(raw) }
     };
@@ -270,12 +270,18 @@ fn make_res(
 ) -> Res {
     let tex = device.create_texture(&wgpu::TextureDescriptor {
         label: Some(label),
-        size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+        size: wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING | extra,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+            | wgpu::TextureUsages::TEXTURE_BINDING
+            | extra,
         view_formats: &[],
     });
     let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
@@ -362,7 +368,11 @@ impl Renderer {
     /// of `width × height`.
     pub fn new(width: u32, height: u32) -> Result<Self, DrawError> {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::PRIMARY,
+            backends: if cfg!(target_os = "windows") {
+                wgpu::Backends::DX12
+            } else {
+                wgpu::Backends::PRIMARY
+            },
             ..Default::default()
         });
         let adapter = block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
@@ -692,8 +702,12 @@ impl Renderer {
             multiview: None,
             cache: None,
         });
-        let clouds_pipeline =
-            fullscreen("clouds", &clouds_pl, &clouds_shader, wgpu::TextureFormat::Rgba16Float);
+        let clouds_pipeline = fullscreen(
+            "clouds",
+            &clouds_pl,
+            &clouds_shader,
+            wgpu::TextureFormat::Rgba16Float,
+        );
 
         let mk_tonemap = |format: wgpu::TextureFormat| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -778,8 +792,10 @@ impl Renderer {
             mipmap_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
-        let lut_sampler = device
-            .create_sampler(&wgpu::SamplerDescriptor { label: Some("lut-sampler"), ..Default::default() });
+        let lut_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("lut-sampler"),
+            ..Default::default()
+        });
         let tonemap_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("tonemap-sampler"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -828,7 +844,11 @@ impl Renderer {
         let mk_lut = |label: &str, w: u32, h: u32| -> Res {
             let tex = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some(label),
-                size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+                size: wgpu::Extent3d {
+                    width: w,
+                    height: h,
+                    depth_or_array_layers: 1,
+                },
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
@@ -848,7 +868,11 @@ impl Renderer {
         let mk1 = |label: &str, format: wgpu::TextureFormat, rgba: [u8; 4]| -> wgpu::TextureView {
             let t = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some(label),
-                size: wgpu::Extent3d { width: 1, height: 1, depth_or_array_layers: 1 },
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
@@ -869,21 +893,44 @@ impl Renderer {
                     bytes_per_row: Some(4),
                     rows_per_image: None,
                 },
-                wgpu::Extent3d { width: 1, height: 1, depth_or_array_layers: 1 },
+                wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
             );
             t.create_view(&wgpu::TextureViewDescriptor::default())
         };
-        let white_srgb = mk1("white-srgb", wgpu::TextureFormat::Rgba8UnormSrgb, [255, 255, 255, 255]);
-        let white_linear =
-            mk1("white-linear", wgpu::TextureFormat::Rgba8Unorm, [255, 255, 255, 255]);
-        let flat_normal = mk1("flat-normal", wgpu::TextureFormat::Rgba8Unorm, [128, 128, 255, 255]);
-        let black_linear = mk1("black-linear", wgpu::TextureFormat::Rgba8Unorm, [0, 0, 0, 0]);
+        let white_srgb = mk1(
+            "white-srgb",
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+            [255, 255, 255, 255],
+        );
+        let white_linear = mk1(
+            "white-linear",
+            wgpu::TextureFormat::Rgba8Unorm,
+            [255, 255, 255, 255],
+        );
+        let flat_normal = mk1(
+            "flat-normal",
+            wgpu::TextureFormat::Rgba8Unorm,
+            [128, 128, 255, 255],
+        );
+        let black_linear = mk1(
+            "black-linear",
+            wgpu::TextureFormat::Rgba8Unorm,
+            [0, 0, 0, 0],
+        );
 
         // ---- default noise volume (8³, replaced by set_noise) ------------
         let default_noise = generate_noise_volume(8, 0);
         let noise_tex = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("cloud-noise-default"),
-            size: wgpu::Extent3d { width: 8, height: 8, depth_or_array_layers: 8 },
+            size: wgpu::Extent3d {
+                width: 8,
+                height: 8,
+                depth_or_array_layers: 8,
+            },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D3,
@@ -904,7 +951,11 @@ impl Renderer {
                 bytes_per_row: Some(8 * 4),
                 rows_per_image: Some(8),
             },
-            wgpu::Extent3d { width: 8, height: 8, depth_or_array_layers: 8 },
+            wgpu::Extent3d {
+                width: 8,
+                height: 8,
+                depth_or_array_layers: 8,
+            },
         );
         let noise_view = noise_tex.create_view(&wgpu::TextureViewDescriptor::default());
 
@@ -946,7 +997,11 @@ impl Renderer {
             lut_sky,
             lut_atr,
             lut_arr,
-            noise: NoiseRes { edge: 8, texture: noise_tex, view: noise_view },
+            noise: NoiseRes {
+                edge: 8,
+                texture: noise_tex,
+                view: noise_view,
+            },
             white_srgb,
             white_linear,
             flat_normal,
@@ -1013,7 +1068,10 @@ impl Renderer {
             label: Some("frame-bind"),
             layout: &self.frame_bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: self.frame_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.frame_buf.as_entire_binding(),
+                },
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
@@ -1022,39 +1080,90 @@ impl Renderer {
                         size: wgpu::BufferSize::new(std::mem::size_of::<DrawUniforms>() as u64),
                     }),
                 },
-                wgpu::BindGroupEntry { binding: 2, resource: self.material_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(&self.lut_trans.view) },
-                wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::TextureView(&self.lut_atr.view) },
-                wgpu::BindGroupEntry { binding: 5, resource: wgpu::BindingResource::TextureView(&self.lut_arr.view) },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.material_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&self.lut_trans.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&self.lut_atr.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::TextureView(&self.lut_arr.view),
+                },
             ],
         }));
         self.sky_bind = Some(self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("sky-bind"),
             layout: &self.sky_bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: self.frame_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(&self.lut_trans.view) },
-                wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::TextureView(&self.lut_sky.view) },
-                wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(&self.lut_atr.view) },
-                wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::TextureView(&self.lut_arr.view) },
-                wgpu::BindGroupEntry { binding: 5, resource: wgpu::BindingResource::Sampler(&self.lut_sampler) },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.frame_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&self.lut_trans.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&self.lut_sky.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&self.lut_atr.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&self.lut_arr.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&self.lut_sampler),
+                },
             ],
         }));
         self.clouds_bind = Some(self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("clouds-bind"),
             layout: &self.clouds_bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: self.frame_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: self.cloud_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.frame_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.cloud_buf.as_entire_binding(),
+                },
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: wgpu::BindingResource::TextureView(noise_view),
                 },
-                wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(&self.hdr_a.view) },
-                wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::TextureView(&self.depth_copy.view) },
-                wgpu::BindGroupEntry { binding: 5, resource: wgpu::BindingResource::Sampler(&self.lut_sampler) },
-                wgpu::BindGroupEntry { binding: 6, resource: wgpu::BindingResource::TextureView(&self.lut_atr.view) },
-                wgpu::BindGroupEntry { binding: 7, resource: wgpu::BindingResource::TextureView(&self.lut_arr.view) },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&self.hdr_a.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&self.depth_copy.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&self.lut_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: wgpu::BindingResource::TextureView(&self.lut_atr.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: wgpu::BindingResource::TextureView(&self.lut_arr.view),
+                },
             ],
         }));
         let mk_tm = |device: &wgpu::Device,
@@ -1066,7 +1175,10 @@ impl Renderer {
                 label: Some("tonemap-bind"),
                 layout,
                 entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: exposure.as_entire_binding() },
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: exposure.as_entire_binding(),
+                    },
                     wgpu::BindGroupEntry {
                         binding: 1,
                         resource: wgpu::BindingResource::TextureView(hdr),
@@ -1141,24 +1253,29 @@ impl Renderer {
     pub fn set_sky_luts(&mut self, luts: &SkyLuts) {
         let p = LutPayloads::from_sky_luts(luts);
         let dims = p.dims();
-        let write = |queue: &wgpu::Queue, tex: &wgpu::Texture, data: &[[f32; 4]], (w, h): (u32, u32)| {
-            debug_assert_eq!(data.len(), (w * h) as usize);
-            queue.write_texture(
-                wgpu::TexelCopyTextureInfo {
-                    texture: tex,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                cast_slice(data),
-                wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(w * 16),
-                    rows_per_image: None,
-                },
-                wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
-            );
-        };
+        let write =
+            |queue: &wgpu::Queue, tex: &wgpu::Texture, data: &[[f32; 4]], (w, h): (u32, u32)| {
+                debug_assert_eq!(data.len(), (w * h) as usize);
+                queue.write_texture(
+                    wgpu::TexelCopyTextureInfo {
+                        texture: tex,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d::ZERO,
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    cast_slice(data),
+                    wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(w * 16),
+                        rows_per_image: None,
+                    },
+                    wgpu::Extent3d {
+                        width: w,
+                        height: h,
+                        depth_or_array_layers: 1,
+                    },
+                );
+            };
         write(&self.queue, &self.lut_trans.tex, &p.transmittance, dims[0]);
         write(&self.queue, &self.lut_sky.tex, &p.sky_view, dims[1]);
         write(&self.queue, &self.lut_atr.tex, &p.aerial_trans, dims[2]);
@@ -1213,13 +1330,22 @@ impl Renderer {
             extent,
         );
         let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
-        self.noise = NoiseRes { edge: volume.size, texture: tex, view };
+        self.noise = NoiseRes {
+            edge: volume.size,
+            texture: tex,
+            view,
+        };
         self.rebuild_static_binds();
     }
 
     /// Sampler for a glTF sampler description (cached by wrap/filter).
     fn gltf_sampler(&mut self, s: GltfSampler) -> wgpu::Sampler {
-        let key = (wrap_code(s.wrap_s), wrap_code(s.wrap_t), filter_code(s.mag), filter_code(s.min));
+        let key = (
+            wrap_code(s.wrap_s),
+            wrap_code(s.wrap_t),
+            filter_code(s.mag),
+            filter_code(s.min),
+        );
         if let Some(sm) = self.samplers.get(&key) {
             return sm.clone();
         }
@@ -1256,17 +1382,25 @@ impl Renderer {
     pub fn set_model(&mut self, model: &GltfModel) -> Result<ModelHandle, DrawError> {
         let mut meshes = Vec::with_capacity(model.meshes.len());
         for m in &model.meshes {
-            let vertices = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("mesh-vertices"),
-                contents: cast_slice(&m.vertices),
-                usage: wgpu::BufferUsages::VERTEX,
+            let vertices = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("mesh-vertices"),
+                    contents: cast_slice(&m.vertices),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
+            let indices = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("mesh-indices"),
+                    contents: cast_slice(&m.indices),
+                    usage: wgpu::BufferUsages::INDEX,
+                });
+            meshes.push(GpuMesh {
+                vertices,
+                indices,
+                index_count: m.indices.len() as u32,
             });
-            let indices = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("mesh-indices"),
-                contents: cast_slice(&m.indices),
-                usage: wgpu::BufferUsages::INDEX,
-            });
-            meshes.push(GpuMesh { vertices, indices, index_count: m.indices.len() as u32 });
         }
 
         let mut images = Vec::with_capacity(model.images.len());
@@ -1320,11 +1454,13 @@ impl Renderer {
         materials_cpu.push(GltfMaterial::default().to_gpu());
         let default_material = (materials_cpu.len() - 1) as u32;
 
-        let material_buf = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("materials"),
-            contents: cast_slice(&materials_cpu),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let material_buf = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("materials"),
+                contents: cast_slice(&materials_cpu),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
 
         let white_srgb = self.white_srgb.clone();
         let white_linear = self.white_linear.clone();
@@ -1353,19 +1489,20 @@ impl Renderer {
                 }
                 None => self.material_sampler.clone(),
             };
-            let pick = |slot: Option<usize>, srgb: bool, fb: &wgpu::TextureView| -> wgpu::TextureView {
-                match slot {
-                    Some(idx) => {
-                        let img = &images[idx];
-                        if srgb {
-                            img.srgb.clone()
-                        } else {
-                            img.linear.clone()
+            let pick =
+                |slot: Option<usize>, srgb: bool, fb: &wgpu::TextureView| -> wgpu::TextureView {
+                    match slot {
+                        Some(idx) => {
+                            let img = &images[idx];
+                            if srgb {
+                                img.srgb.clone()
+                            } else {
+                                img.linear.clone()
+                            }
                         }
+                        None => fb.clone(),
                     }
-                    None => fb.clone(),
-                }
-            };
+                };
             let base = pick(mat.base_color_texture, true, &white_srgb);
             let mr = pick(mat.metallic_roughness_texture, false, &white_linear);
             let nrm = pick(mat.normal_texture, false, &flat_normal);
@@ -1403,7 +1540,11 @@ impl Renderer {
             });
             let blend = mat.alpha_mode == AlphaMode::Blend;
             let double_sided = mat.double_sided;
-            slots.push(GpuMaterialSlot { bind_group, blend, double_sided });
+            slots.push(GpuMaterialSlot {
+                bind_group,
+                blend,
+                double_sided,
+            });
         }
 
         self.meshes = meshes;
@@ -1444,12 +1585,40 @@ impl Renderer {
         root_rotation: DQuat,
         root_scale: DVec3,
     ) -> Vec<DrawItem> {
+        Self::draws_from_gltf_range(
+            model,
+            0..model.instances.len(),
+            origin,
+            root_position_ecef,
+            root_rotation,
+            root_scale,
+        )
+    }
+
+    /// Build draw items for a subset of a combined model. This allows
+    /// independently placed world tiles and aircraft to share one GPU
+    /// resource upload while retaining separate double-precision roots.
+    pub fn draws_from_gltf_range(
+        model: &GltfModel,
+        instances: std::ops::Range<usize>,
+        origin: &FloatingOrigin,
+        root_position_ecef: DVec3,
+        root_rotation: DQuat,
+        root_scale: DVec3,
+    ) -> Vec<DrawItem> {
         let cam = origin.camera_ecef().as_dvec3();
         let root =
             DMat4::from_scale_rotation_translation(root_scale, root_rotation, root_position_ecef);
         model
             .instances
             .iter()
+            .skip(instances.start.min(model.instances.len()))
+            .take(
+                instances
+                    .end
+                    .min(model.instances.len())
+                    .saturating_sub(instances.start),
+            )
             .map(|inst| {
                 let local_cols = inst.world.to_cols_array();
                 let mut local64 = [0.0f64; 16];
@@ -1503,31 +1672,44 @@ impl Renderer {
         };
 
         if frame.draws.len() > MAX_DRAW_SLOTS {
-            return Err(DrawError::TooManyDraws { got: frame.draws.len() });
+            return Err(DrawError::TooManyDraws {
+                got: frame.draws.len(),
+            });
         }
         if !frame.draws.is_empty() && !self.has_model {
             return Err(DrawError::NoModel);
         }
         for d in frame.draws {
             if d.mesh as usize >= self.meshes.len() {
-                return Err(DrawError::TableOutOfRange { what: "mesh", index: d.mesh });
+                return Err(DrawError::TableOutOfRange {
+                    what: "mesh",
+                    index: d.mesh,
+                });
             }
             let mat = d.material.unwrap_or(self.default_material);
             if mat as usize >= self.material_slots.len() {
-                return Err(DrawError::TableOutOfRange { what: "material", index: mat });
+                return Err(DrawError::TableOutOfRange {
+                    what: "material",
+                    index: mat,
+                });
             }
         }
 
         // ---- uniforms ---------------------------------------------------
         let inv_view_proj = (frame.proj * frame.view).inverse();
-        let flags = (if frame.aerial { 1.0f32 } else { 0.0 })
-            + (if frame.sun_disc { 2.0 } else { 0.0 });
+        let flags =
+            (if frame.aerial { 1.0f32 } else { 0.0 }) + (if frame.sun_disc { 2.0 } else { 0.0 });
         let fu = FrameUniforms {
             view: gpu_mat(&frame.view),
             proj: gpu_mat(&frame.proj),
             inv_view_proj: gpu_mat(&inv_view_proj),
             sky_from_rel: gpu_mat(&Mat4::from_quat(frame.sky_from_rel)),
-            sun_dir_sky: [frame.sun_dir_sky.x, frame.sun_dir_sky.y, frame.sun_dir_sky.z, 0.0],
+            sun_dir_sky: [
+                frame.sun_dir_sky.x,
+                frame.sun_dir_sky.y,
+                frame.sun_dir_sky.z,
+                0.0,
+            ],
             sun_irradiance: [
                 frame.sun_irradiance.x,
                 frame.sun_irradiance.y,
@@ -1535,9 +1717,15 @@ impl Renderer {
                 0.0,
             ],
             time_wind: [frame.time_s, frame.wind.x, frame.wind.y, frame.wind.z],
-            params: [frame.exposure, flags, frame.camera_alt_m, frame.atmosphere_height_m],
+            params: [
+                frame.exposure,
+                flags,
+                frame.camera_alt_m,
+                frame.atmosphere_height_m,
+            ],
         };
-        self.queue.write_buffer(&self.frame_buf, 0, cast_slice(&[fu]));
+        self.queue
+            .write_buffer(&self.frame_buf, 0, cast_slice(&[fu]));
 
         if !frame.draws.is_empty() {
             let mut slots: Vec<u8> = vec![0u8; frame.draws.len() * DRAW_SLOT_STRIDE as usize];
@@ -1556,7 +1744,8 @@ impl Renderer {
             }
             self.queue.write_buffer(&self.draw_buf, 0, &slots);
         }
-        self.queue.write_buffer(&self.cloud_buf, 0, cast_slice(&[frame.clouds]));
+        self.queue
+            .write_buffer(&self.cloud_buf, 0, cast_slice(&[frame.clouds]));
         self.queue.write_buffer(
             &self.exposure_buf,
             0,
@@ -1581,7 +1770,9 @@ impl Renderer {
 
         let mut encoder = self
             .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("frame"),
+            });
 
         // ---- pass 1: sky → opaques → blend ------------------------------
         {
@@ -1617,45 +1808,44 @@ impl Renderer {
             let mut bound_mat: Option<u32> = None;
             let mut bound_offset: Option<u32> = None;
 
-            let mut draw_group = |pass: &mut wgpu::RenderPass<'_>,
-                                  list: &[(usize, &DrawItem)],
-                                  blend: bool| {
-                for &(slot, d) in list {
-                    let mat_idx = d.material.unwrap_or(self.default_material);
-                    let mslot = &self.material_slots[mat_idx as usize];
-                    let key = (blend, mslot.double_sided);
-                    if bound != Some(key) {
-                        pass.set_pipeline(if blend {
-                            if key.1 {
-                                &self.pbr_blend_nc
+            let mut draw_group =
+                |pass: &mut wgpu::RenderPass<'_>, list: &[(usize, &DrawItem)], blend: bool| {
+                    for &(slot, d) in list {
+                        let mat_idx = d.material.unwrap_or(self.default_material);
+                        let mslot = &self.material_slots[mat_idx as usize];
+                        let key = (blend, mslot.double_sided);
+                        if bound != Some(key) {
+                            pass.set_pipeline(if blend {
+                                if key.1 {
+                                    &self.pbr_blend_nc
+                                } else {
+                                    &self.pbr_blend
+                                }
+                            } else if key.1 {
+                                &self.pbr_opaque_nc
                             } else {
-                                &self.pbr_blend
-                            }
-                        } else if key.1 {
-                            &self.pbr_opaque_nc
-                        } else {
-                            &self.pbr_opaque
-                        });
-                        pass.set_bind_group(0, frame_bind, &[0]);
-                        bound = Some(key);
-                        bound_offset = Some(0);
-                        bound_mat = None;
+                                &self.pbr_opaque
+                            });
+                            pass.set_bind_group(0, frame_bind, &[0]);
+                            bound = Some(key);
+                            bound_offset = Some(0);
+                            bound_mat = None;
+                        }
+                        if bound_mat != Some(mat_idx) {
+                            pass.set_bind_group(1, &mslot.bind_group, &[]);
+                            bound_mat = Some(mat_idx);
+                        }
+                        let offset = (slot as u64 * DRAW_SLOT_STRIDE) as u32;
+                        if bound_offset != Some(offset) {
+                            pass.set_bind_group(0, frame_bind, &[offset]);
+                            bound_offset = Some(offset);
+                        }
+                        let mesh = &self.meshes[d.mesh as usize];
+                        pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+                        pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+                        pass.draw_indexed(0..mesh.index_count, 0, 0..1);
                     }
-                    if bound_mat != Some(mat_idx) {
-                        pass.set_bind_group(1, &mslot.bind_group, &[]);
-                        bound_mat = Some(mat_idx);
-                    }
-                    let offset = (slot as u64 * DRAW_SLOT_STRIDE) as u32;
-                    if bound_offset != Some(offset) {
-                        pass.set_bind_group(0, frame_bind, &[offset]);
-                        bound_offset = Some(offset);
-                    }
-                    let mesh = &self.meshes[d.mesh as usize];
-                    pass.set_vertex_buffer(0, mesh.vertices.slice(..));
-                    pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-                    pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                }
-            };
+                };
 
             draw_group(&mut pass, &opaque, false);
             draw_group(&mut pass, &blend, true);

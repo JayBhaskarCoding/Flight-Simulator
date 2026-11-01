@@ -19,7 +19,11 @@ impl LatLonAlt {
     /// Construct from radians (latitude ∈ [-π/2, π/2], longitude ∈ [-π, π])
     /// and altitude in metres above the ellipsoid.
     pub fn new(lat_rad: f64, lon_rad: f64, alt_m: f64) -> Self {
-        Self { lat_rad, lon_rad, alt_m }
+        Self {
+            lat_rad,
+            lon_rad,
+            alt_m,
+        }
     }
 
     /// Construct from degrees and metres above the ellipsoid.

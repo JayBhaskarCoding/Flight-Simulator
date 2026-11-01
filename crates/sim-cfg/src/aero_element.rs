@@ -91,11 +91,14 @@ pub fn discretize(
     // Full extent along the surface's own span axis.
     let extent = surface.span_m * if mirror { 0.5 } else { 1.0 };
     let chordwise = disc.chordwise as usize;
-    let mut out =
-        Vec::with_capacity(spanwise as usize * chordwise * if mirror { 2 } else { 1 });
+    let mut out = Vec::with_capacity(spanwise as usize * chordwise * if mirror { 2 } else { 1 });
 
     // Side multiplier: +1 primary, −1 mirrored (only for the ±Y axis).
-    let sides: &[f64] = if mirror && axis.y != 0.0 { &[1.0, -1.0] } else { &[1.0] };
+    let sides: &[f64] = if mirror && axis.y != 0.0 {
+        &[1.0, -1.0]
+    } else {
+        &[1.0]
+    };
     for &side in sides {
         for i in 0..spanwise {
             let t0 = i as f64 / spanwise as f64;
@@ -114,7 +117,12 @@ pub fn discretize(
             // Sweep moves the quarter-chord aft; dihedral (±Y spans only)
             // moves the tip up (−Z).
             let x_qc = attach.x + surface.sweep_rad.tan() * s;
-            let z_qc = attach.z - if axis.y != 0.0 { surface.dihedral_rad.tan() * s } else { 0.0 };
+            let z_qc = attach.z
+                - if axis.y != 0.0 {
+                    surface.dihedral_rad.tan() * s
+                } else {
+                    0.0
+                };
             let y_axis_offset = attach.y;
 
             for j in 0..chordwise {
@@ -258,15 +266,19 @@ mod tests {
             .max_by(|a, b| a.span_pos_m.partial_cmp(&b.span_pos_m).unwrap())
             .unwrap();
         // tip swept aft: x > root x
-        assert!(tip.quarter_chord_center.x > 0.5, "sweep not applied: {}", tip.quarter_chord_center.x);
+        assert!(
+            tip.quarter_chord_center.x > 0.5,
+            "sweep not applied: {}",
+            tip.quarter_chord_center.x
+        );
         // dihedral with +Z down: tip raised = z negative
-        assert!(tip.quarter_chord_center.z < -0.1, "dihedral not applied: {}", tip.quarter_chord_center.z);
+        assert!(
+            tip.quarter_chord_center.z < -0.1,
+            "dihedral not applied: {}",
+            tip.quarter_chord_center.z
+        );
         // aspect ratio consistency: sum of spanwise extents = full span
-        let span_sum: f64 = els
-            .iter()
-            .filter(|e| e.side > 0.0)
-            .map(|e| e.span_m)
-            .sum();
+        let span_sum: f64 = els.iter().filter(|e| e.side > 0.0).map(|e| e.span_m).sum();
         assert!((span_sum - w.span_m * 0.5).abs() < 1e-12);
     }
 
@@ -279,7 +291,11 @@ mod tests {
         let els = discretize(&w, 0, 10, Discretization::default(), true);
         for e in els.iter().filter(|e| e.side > 0.0) {
             let expect = w.incidence_rad + w.washout_rad * e.span_frac;
-            assert!((e.incidence_rad - expect).abs() < 1e-15, "station {}", e.span_frac);
+            assert!(
+                (e.incidence_rad - expect).abs() < 1e-15,
+                "station {}",
+                e.span_frac
+            );
         }
         let root_i = els
             .iter()

@@ -20,9 +20,7 @@ pub mod isa;
 pub mod metar;
 pub mod sky;
 
-pub use dryden::{DrydenConfig, DrydenTurbulence, TurbulenceIntensity, Rng};
+pub use dryden::{DrydenConfig, DrydenTurbulence, Rng, TurbulenceIntensity};
 pub use isa::{AtmosphereState, IsaConditions, IsaModel};
-pub use metar::{
-    CloudLayer, Metar, MetarError, SkyCondition, WeatherPhenomenon, Wind,
-};
+pub use metar::{CloudLayer, Metar, MetarError, SkyCondition, WeatherPhenomenon, Wind};
 pub use sky::{SkyLuts, SkyParams};

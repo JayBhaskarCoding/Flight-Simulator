@@ -14,6 +14,16 @@
 //!   their moments come from the published stability derivatives
 //!   (`cm_delta_e`, `cl_delta_a`, `cn_delta_r`) scaled with dynamic
 //!   pressure, wing area, MAC and span.
+//! * **Stability derivative augmentation** — rate damping (`Cm_q`,
+//!   `Cl_p`, `Cn_r`), cross-coupling (`Cl_r`, `Cn_p`), side-force
+//!   (`Cy_β`), dihedral effect (`Cl_β`), directional stability (`Cn_β`),
+//!   and pitch stability (`Cm_α`, `Cm_0`) are applied as classical
+//!   non-dimensional derivatives in addition to the element integration.
+//!   This ensures responsive, well-damped handling resembling MSFS 2024.
+//! * **Ground effect** — induced drag is reduced when the aircraft flies
+//!   within one wingspan of the ground (`φ = (16 h/b)² / (1 + (16 h/b)²)`).
+//! * **Adverse yaw** — aileron deflection couples into yaw via `Cn_δa`.
+//! * **Elevator trim** — a trim offset is added to the elevator input.
 
 use glam::DVec3;
 use sim_cfg::aero_element::AeroElement;
@@ -32,7 +42,10 @@ pub struct AtmosphereSample {
 
 impl Default for AtmosphereSample {
     fn default() -> Self {
-        Self { density_kg_m3: 1.225, speed_of_sound_mps: 340.294 }
+        Self {
+            density_kg_m3: 1.225,
+            speed_of_sound_mps: 340.294,
+        }
     }
 }
 
@@ -62,6 +75,12 @@ pub struct ControlInputs {
     pub brake: f64,
     /// Nosewheel steering command, −1..=1 (positive = right).
     pub steering: f64,
+    /// Elevator trim offset, rad (added to `elevator_rad` for the net
+    /// elevator deflection in the aero solver). Positive trailing-edge
+    /// down = nose-down trim moment on a stable aircraft.
+    pub elevator_trim_rad: f64,
+    /// Engine/propeller thrust, N (used for propwash over tail calculation).
+    pub prop_thrust_n: f64,
 }
 
 /// Net aerodynamic wrench in body axes.
@@ -137,6 +156,9 @@ pub struct AeroSolver {
     aspect_ratio: f64,
     /// CG position in body coordinates (moment reference), m.
     cg_body: DVec3,
+    /// Height above ground for ground effect, m.
+    /// Updated each step by the caller via `set_height_agl`.
+    height_agl_m: f64,
 }
 
 /// Discretization resolution used by [`AeroSolver::from_aircraft`].
@@ -152,7 +174,11 @@ pub struct AeroResolution {
 
 impl Default for AeroResolution {
     fn default() -> Self {
-        Self { wing_spanwise: 16, tail_spanwise: 8, chordwise: 1 }
+        Self {
+            wing_spanwise: 16,
+            tail_spanwise: 8,
+            chordwise: 1,
+        }
     }
 }
 
@@ -178,11 +204,15 @@ impl AeroSolver {
         for el in wing {
             elements.push(ElementModel::bake(el, g.wing.dihedral_rad, true));
         }
-        let htail = g.htail.discretize(1, res.tail_spanwise, res.chordwise, true);
+        let htail = g
+            .htail
+            .discretize(1, res.tail_spanwise, res.chordwise, true);
         for el in htail {
             elements.push(ElementModel::bake(el, g.htail.dihedral_rad, false));
         }
-        let vtail = g.vtail.discretize(2, res.tail_spanwise, res.chordwise, false);
+        let vtail = g
+            .vtail
+            .discretize(2, res.tail_spanwise, res.chordwise, false);
         for el in vtail {
             elements.push(ElementModel::bake(el, g.vtail.dihedral_rad, false));
         }
@@ -199,6 +229,7 @@ impl AeroSolver {
             ref_mac_m,
             aspect_ratio,
             cg_body,
+            height_agl_m: 1000.0,
         }
     }
 
@@ -215,6 +246,28 @@ impl AeroSolver {
     /// Reference area (main wing), m².
     pub fn reference_area_m2(&self) -> f64 {
         self.ref_area_m2
+    }
+
+    /// Set the aircraft's height above the ground for ground-effect
+    /// computation. Should be called every frame/step with the actual
+    /// gear-to-ground clearance or (position_z − terrain_height).
+    pub fn set_height_agl(&mut self, h: f64) {
+        self.height_agl_m = h.max(0.01);
+    }
+
+    /// Ground effect factor: reduces induced drag when close to the
+    /// ground. Uses the classical formula
+    /// `φ = (16 h/b)² / (1 + (16 h/b)²)`, where `h` is height above
+    /// ground and `b` is wingspan. At ground level (h→0), φ→0 meaning
+    /// induced drag vanishes; at h > b, φ≈1 (no effect).
+    fn ground_effect_factor(&self) -> f64 {
+        let span = self.ref_span_m.max(1.0);
+        if self.height_agl_m >= span {
+            return 1.0;
+        }
+        let ratio = 16.0 * self.height_agl_m / span;
+        let r2 = ratio * ratio;
+        r2 / (1.0 + r2)
     }
 
     /// Evaluate the aero wrench for one RK stage.
@@ -234,6 +287,8 @@ impl AeroSolver {
         let mut force = DVec3::ZERO;
         let mut torque = DVec3::ZERO;
 
+        let ge_factor = self.ground_effect_factor();
+
         for em in &self.elements {
             let r = em.element.center - self.cg_body;
             let v_local = v_body + omega_body.cross(r);
@@ -248,13 +303,21 @@ impl AeroSolver {
             // pressure side (Z-down body: positive α has downward velocity)
             let alpha = (-v_local.dot(em.up_axis)).atan2(v_local.dot(em.chord_axis));
 
-            let flap_step = if em.applies_flaps { controls.flap_step } else { 0 };
+            let flap_step = if em.applies_flaps {
+                controls.flap_step
+            } else {
+                0
+            };
             // symmetric-airfoil CL: the aircraft cl0 is emergent from
             // geometric incidence instead of being double-applied.
             let cl = self.coeffs.lift_coefficient(alpha, flap_step) - self.coeffs.cl0;
             let flap_drag: f64 = self.coeffs.flap_cd_steps.iter().take(flap_step).sum();
-            let induced = cl * cl
-                / (std::f64::consts::PI * self.coeffs.oswald.max(0.5) * self.aspect_ratio.max(1e-3));
+            let induced_raw = cl * cl
+                / (std::f64::consts::PI
+                    * self.coeffs.oswald.max(0.5)
+                    * self.aspect_ratio.max(1e-3));
+            // Apply ground effect: reduce induced drag near the ground
+            let induced = induced_raw * ge_factor;
             let cd = self.coeffs.cd0 + flap_drag + induced;
 
             // lift direction: strip "up" projected perpendicular to the flow
@@ -286,19 +349,87 @@ impl AeroSolver {
             torque += r.cross(f);
         }
 
-        // control-surface moments from published stability derivatives
+        // ---------------------------------------------------------------
+        // Classical stability derivative augmentation
+        // ---------------------------------------------------------------
+        // All terms use the CG airspeed (not local strip velocity) for the
+        // non-dimensional coefficients.  The derivatives are added ON TOP
+        // of the element integration so the combined model is responsive
+        // and well-damped, matching MSFS 2024-class behaviour.
         let speed = v_body.length();
-        if speed > 1.0 {
+        if speed > 0.1 || controls.prop_thrust_n > 0.0 {
+            let speed_eff = speed.max(1.0);
             let q_bar = 0.5 * rho * speed * speed;
-            torque.x += q_bar * self.ref_area_m2 * self.ref_span_m
-                * self.coeffs.cl_delta_a * controls.aileron_rad;
-            torque.y += q_bar * self.ref_area_m2 * self.ref_mac_m
-                * self.coeffs.cm_delta_e * controls.elevator_rad;
-            torque.z += q_bar * self.ref_area_m2 * self.ref_span_m
-                * self.coeffs.cn_delta_r * controls.rudder_rad;
+
+            // Propwash over tail: slipstream from the propeller increases
+            // local dynamic pressure over the elevator and rudder, giving
+            // them authority even at low takeoff roll speeds or on the ground.
+            let q_bar_tail = if controls.prop_thrust_n > 1.0 && rho > 0.0 {
+                let disk_area = std::f64::consts::PI * 0.965 * 0.965; // C172 prop radius ~0.965 m
+                let v_wash = (2.0 * controls.prop_thrust_n / (rho * disk_area)).sqrt();
+                let v_tail = speed + 0.65 * v_wash;
+                (0.5 * rho * v_tail * v_tail).max(q_bar)
+            } else {
+                q_bar
+            };
+
+            // Body-frame aerodynamic angles (wind → body decomposition)
+            // In body axes (+X fwd, +Y right, +Z down), relative wind from
+            // below has positive v_body.z, giving positive angle of attack.
+            let alpha_cg = v_body.z.atan2(speed_eff); // angle of attack
+            let beta_cg = (v_body.y / speed_eff).clamp(-1.0, 1.0).asin(); // sideslip angle
+
+            // Non-dimensional rates: p̂ = p·b/2V, q̂ = q·c/2V, r̂ = r·b/2V
+            let two_v = 2.0 * speed_eff;
+            let p_hat = omega_body.x * self.ref_span_m / two_v;
+            let q_hat = omega_body.y * self.ref_mac_m  / two_v;
+            let r_hat = omega_body.z * self.ref_span_m / two_v;
+
+            // Net elevator deflection = stick + trim
+            let elevator_total = controls.elevator_rad + controls.elevator_trim_rad;
+
+            // --- Pitch axis (moment about body +Y) ---
+            // Cm_0 + Cm_α·α + Cm_q·q̂ (use freestream q_bar)
+            // Cm_δe·δe (uses q_bar_tail with propwash boost)
+            let cm_stability = self.coeffs.cm0
+                + self.coeffs.cm_alpha * alpha_cg
+                + self.coeffs.cm_q * q_hat;
+            let pitch_stability_torque = q_bar * self.ref_area_m2 * self.ref_mac_m * cm_stability;
+            let elevator_torque = q_bar_tail * self.ref_area_m2 * self.ref_mac_m * self.coeffs.cm_delta_e * elevator_total;
+            torque.y += pitch_stability_torque + elevator_torque;
+
+            // --- Roll axis (moment about body +X) ---
+            // Cl_p·p̂ + Cl_r·r̂ + Cl_β·β + Cl_δa·δa
+            let cl_roll = self.coeffs.cl_p * p_hat
+                + self.coeffs.cl_r * r_hat
+                + self.coeffs.cl_beta * beta_cg
+                + self.coeffs.cl_delta_a * controls.aileron_rad;
+            torque.x += q_bar * self.ref_area_m2 * self.ref_span_m * cl_roll;
+
+            // --- Yaw axis (moment about body +Z) ---
+            // Cn_r·r̂ + Cn_p·p̂ + Cn_β·β + Cn_δa·δa (adverse yaw)
+            // Cn_δa for a typical C172 is approximately −0.06 per rad
+            // (ailerons create differential drag → yaw away from the turn).
+            // Rudder authority uses q_bar_tail.
+            let cn_delta_a = -0.06; // adverse yaw coupling
+            let cn_stability = self.coeffs.cn_r * r_hat
+                + self.coeffs.cn_p * p_hat
+                + self.coeffs.cn_beta * beta_cg
+                + cn_delta_a * controls.aileron_rad;
+            let yaw_stability_torque = q_bar * self.ref_area_m2 * self.ref_span_m * cn_stability;
+            let rudder_torque = q_bar_tail * self.ref_area_m2 * self.ref_span_m * self.coeffs.cn_delta_r * controls.rudder_rad;
+            torque.z += yaw_stability_torque + rudder_torque;
+
+            // --- Side force (body +Y) ---
+            // Cy_β·β (restoring side force in sideslip)
+            let cy = self.coeffs.cy_beta * beta_cg;
+            force.y += q_bar * self.ref_area_m2 * cy;
         }
 
-        AeroForces { force_body: force, torque_body: torque }
+        AeroForces {
+            force_body: force,
+            torque_body: torque,
+        }
     }
 }
 
@@ -361,6 +492,7 @@ mod tests {
             ref_mac_m: 1.5,
             aspect_ratio: ar,
             cg_body: DVec3::ZERO,
+            height_agl_m: 1000.0,
         }
     }
 
@@ -384,7 +516,11 @@ mod tests {
         let v_hat = v_body.normalize();
         let along = out.force_body.dot(v_hat);
         let across = out.force_body - v_hat * along;
-        assert!((across.length() - expected_lift).abs() < 1e-6, "{}", across.length());
+        assert!(
+            (across.length() - expected_lift).abs() < 1e-6,
+            "{}",
+            across.length()
+        );
         // lift points up (−Z)
         assert!(across.z < 0.0, "lift must point up: {across}");
         // drag along −flow: cd = cd0 + induced
@@ -417,10 +553,18 @@ mod tests {
         let v_body = DVec3::new(40.0, 6.0, 0.0); // β > 0
         let atm = AtmosphereSample::default();
         let out = solver.solve(v_body, DVec3::ZERO, &atm, &ControlInputs::default());
-        assert!(out.force_body.y < 0.0, "side force must be restoring: {}", out.force_body.y);
+        assert!(
+            out.force_body.y < 0.0,
+            "side force must be restoring: {}",
+            out.force_body.y
+        );
         // yaw moment about CG behind the strip: nose-left at positive β
         // (fin sits aft, x < 0): M_z from r × F
-        assert!(out.torque_body.z > 0.0, "weathercock moment must be positive: {}", out.torque_body.z);
+        assert!(
+            out.torque_body.z > 0.0,
+            "weathercock moment must be positive: {}",
+            out.torque_body.z
+        );
     }
 
     #[test]
@@ -428,7 +572,11 @@ mod tests {
         // positive sideslip (flow from the right) with dihedral: right wing
         // gains lift → negative (left-rolling) roll moment, cl_beta < 0.
         let mut solver = single_element_solver(wing_element(1.0), 3.0f64.to_radians());
-        solver.elements.push(ElementModel::bake(wing_element(-1.0), 3.0f64.to_radians(), true));
+        solver.elements.push(ElementModel::bake(
+            wing_element(-1.0),
+            3.0f64.to_radians(),
+            true,
+        ));
         // both strips share the same centre here, so the roll moment comes
         // from the force asymmetry applied at mirrored arms
         let v_body = DVec3::new(40.0, 5.0, 0.0);
@@ -444,22 +592,37 @@ mod tests {
         let up_l = glam::DQuat::from_rotation_x(3.0f64.to_radians()) * DVec3::new(0.0, 0.0, -1.0);
         let alpha_r = (-v_body.dot(up_r)).atan2(v_body.dot(DVec3::X));
         let alpha_l = (-v_body.dot(up_l)).atan2(v_body.dot(DVec3::X));
-        assert!(alpha_r > alpha_l, "dihedral must raise right-wing α: {alpha_r} vs {alpha_l}");
+        assert!(
+            alpha_r > alpha_l,
+            "dihedral must raise right-wing α: {alpha_r} vs {alpha_l}"
+        );
     }
 
     #[test]
     fn symmetric_flow_produces_no_side_force_or_roll() {
         // identical strips both sides, β = 0, ω = 0 → lateral force ~ 0
         let mut solver = single_element_solver(wing_element(1.0), 2.0f64.to_radians());
-        solver.elements.push(ElementModel::bake(wing_element(-1.0), 2.0f64.to_radians(), true));
+        solver.elements.push(ElementModel::bake(
+            wing_element(-1.0),
+            2.0f64.to_radians(),
+            true,
+        ));
         // give them mirrored centres so roll would be visible if asymmetric
         solver.elements[0].element.center = DVec3::new(0.0, 2.0, -0.1);
         solver.elements[1].element.center = DVec3::new(0.0, -2.0, -0.1);
         let v_body = DVec3::new(45.0, 0.0, 0.5);
         let atm = AtmosphereSample::default();
         let out = solver.solve(v_body, DVec3::ZERO, &atm, &ControlInputs::default());
-        assert!(out.force_body.y.abs() < 1e-6, "side force {}", out.force_body.y);
-        assert!(out.torque_body.x.abs() < 1e-6, "roll moment {}", out.torque_body.x);
+        assert!(
+            out.force_body.y.abs() < 1e-6,
+            "side force {}",
+            out.force_body.y
+        );
+        assert!(
+            out.torque_body.x.abs() < 1e-6,
+            "roll moment {}",
+            out.torque_body.x
+        );
     }
 
     #[test]
@@ -467,7 +630,10 @@ mod tests {
         let solver = single_element_solver(wing_element(1.0), 0.0);
         let v_body = DVec3::new(50.0, 0.0, 0.0);
         let atm = AtmosphereSample::default();
-        let controls = ControlInputs { elevator_rad: 0.1, ..ControlInputs::default() };
+        let controls = ControlInputs {
+            elevator_rad: 0.1,
+            ..ControlInputs::default()
+        };
         let clean = solver.solve(v_body, DVec3::ZERO, &atm, &ControlInputs::default());
         let deflected = solver.solve(v_body, DVec3::ZERO, &atm, &controls);
         let q = 0.5 * 1.225 * 2500.0;
@@ -478,7 +644,10 @@ mod tests {
             deflected.torque_body.y - clean.torque_body.y
         );
 
-        let controls = ControlInputs { aileron_rad: 0.15, ..ControlInputs::default() };
+        let controls = ControlInputs {
+            aileron_rad: 0.15,
+            ..ControlInputs::default()
+        };
         let roll = solver.solve(v_body, DVec3::ZERO, &atm, &controls);
         let expected_roll = q * 4.0 * 4.0 * 0.18 * 0.15;
         assert!((roll.torque_body.x - expected_roll).abs() < 1e-6);
@@ -491,7 +660,10 @@ mod tests {
         let v_body = DVec3::new(40.0, 0.0, 40.0 * alpha);
         let atm = AtmosphereSample::default();
         let clean = solver.solve(v_body, DVec3::ZERO, &atm, &ControlInputs::default());
-        let with_flaps = ControlInputs { flap_step: 2, ..ControlInputs::default() };
+        let with_flaps = ControlInputs {
+            flap_step: 2,
+            ..ControlInputs::default()
+        };
         let flapped = solver.solve(v_body, DVec3::ZERO, &atm, &with_flaps);
         assert!(
             flapped.force_body.z < clean.force_body.z,
@@ -503,7 +675,10 @@ mod tests {
         // extra drag from flap steps
         let drag_clean = -clean.force_body.dot(v_body.normalize());
         let drag_flap = -flapped.force_body.dot(v_body.normalize());
-        assert!(drag_flap - drag_clean > q * 2.0 * 0.05 * 0.5, "Δdrag too small");
+        assert!(
+            drag_flap - drag_clean > q * 2.0 * 0.05 * 0.5,
+            "Δdrag too small"
+        );
     }
 
     #[test]
@@ -529,7 +704,12 @@ mod tests {
         // positive pitch rate: aft strip moves DOWN (ω × r with r_x < 0:
         // ω_y·r_z terms … locally v_z gains −ω_y·r_x·? → higher α on tail
         // → more downwash force → nose-down (negative M_y) damping)
-        let pitching = solver.solve(v_body, DVec3::new(0.0, 0.3, 0.0), &atm, &ControlInputs::default());
+        let pitching = solver.solve(
+            v_body,
+            DVec3::new(0.0, 0.3, 0.0),
+            &atm,
+            &ControlInputs::default(),
+        );
         assert!(
             pitching.torque_body.y < still.torque_body.y + 1e-9,
             "pitch damping must reduce M_y: still {} pitching {}",

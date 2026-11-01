@@ -10,8 +10,15 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
 /// Bind a server on an ephemeral port and spawn its accept loop.
-async fn start_server(bus: SimVarBus) -> (std::net::SocketAddr, tokio::task::JoinHandle<std::io::Result<()>>) {
-    let server = OpenSimConnectServer::bind("127.0.0.1:0", bus).await.expect("bind");
+async fn start_server(
+    bus: SimVarBus,
+) -> (
+    std::net::SocketAddr,
+    tokio::task::JoinHandle<std::io::Result<()>>,
+) {
+    let server = OpenSimConnectServer::bind("127.0.0.1:0", bus)
+        .await
+        .expect("bind");
     let addr = server.local_addr().expect("local_addr");
     let handle = tokio::spawn(server.serve());
     (addr, handle)
@@ -31,7 +38,10 @@ async fn recv_frame(stream: &mut TcpStream) -> std::io::Result<(u8, Vec<u8>)> {
     let mut len_buf = [0u8; 4];
     stream.read_exact(&mut len_buf).await?;
     let len = u32::from_be_bytes(len_buf) as usize;
-    assert!(len > 0 && len <= sim_avionics::opensimconnect::MAX_FRAME, "len={len}");
+    assert!(
+        len > 0 && len <= sim_avionics::opensimconnect::MAX_FRAME,
+        "len={len}"
+    );
     let mut buf = vec![0u8; len];
     stream.read_exact(&mut buf).await?;
     Ok((buf[0], buf[1..].to_vec()))
@@ -94,7 +104,10 @@ async fn full_session_handshake_define_one_shot_request() {
     if kind == msg::ERROR {
         let code = u16::from_be_bytes(body[0..2].try_into().unwrap());
         let mlen = u16::from_be_bytes(body[2..4].try_into().unwrap()) as usize;
-        panic!("unexpected ERROR code={code} msg={}", String::from_utf8_lossy(&body[4..4 + mlen]));
+        panic!(
+            "unexpected ERROR code={code} msg={}",
+            String::from_utf8_lossy(&body[4..4 + mlen])
+        );
     }
     assert_eq!(kind, msg::DEFINED, "body={body:?}");
     assert_eq!(u16::from_be_bytes(body[0..2].try_into().unwrap()), 2);
@@ -126,7 +139,11 @@ async fn full_session_handshake_define_one_shot_request() {
     let (kind, body) = recv_frame(&mut s).await.unwrap();
     assert_eq!(kind, msg::DATA);
     let (_, _, _, values) = parse_data(&body);
-    assert!((values[0] - 120.0 * 1852.0 / 3600.0).abs() < 1e-9, "{}", values[0]);
+    assert!(
+        (values[0] - 120.0 * 1852.0 / 3600.0).abs() < 1e-9,
+        "{}",
+        values[0]
+    );
     assert!((values[1] - 3300.0 * 0.3048).abs() < 1e-9, "{}", values[1]);
 
     // graceful close
@@ -156,7 +173,10 @@ async fn unknown_variable_and_bad_unit_return_errors() {
     assert_eq!(kind, msg::ERROR);
     if error_code(&body) == err::MALFORMED {
         let mlen = u16::from_be_bytes(body[2..4].try_into().unwrap()) as usize;
-        panic!("framing error: {}", String::from_utf8_lossy(&body[4..4 + mlen]));
+        panic!(
+            "framing error: {}",
+            String::from_utf8_lossy(&body[4..4 + mlen])
+        );
     }
     assert_eq!(error_code(&body), err::BAD_UNIT);
 
@@ -331,12 +351,17 @@ async fn autopilot_steers_from_bus_snapshot() {
     ap.set_mode(ApMode::HeadingHold, &sample);
     ap.set_heading_target(90.0);
     let out = ap.step(&sample, 0.02);
-    assert!(out.aileron > 0.0, "right turn expected, got {}", out.aileron);
+    assert!(
+        out.aileron > 0.0,
+        "right turn expected, got {}",
+        out.aileron
+    );
     assert!(out.roll_reference_deg > 0.0);
 
     // bank right => ROLL DEGREES becomes positive; loop then reduces
     // the aileron command as the roll closes on the reference.
-    bus.set("ROLL DEGREES", out.roll_reference_deg, Unit::Degree).unwrap();
+    bus.set("ROLL DEGREES", out.roll_reference_deg, Unit::Degree)
+        .unwrap();
     let sample2 = read(&bus);
     let out2 = ap.step(&sample2, 0.02);
     // roll reached the reference: P-term vanishes and the derivative
@@ -373,7 +398,9 @@ fn gauge_consumes_bus_values_end_to_end() {
     let bus = SimVarBus::with_defaults();
     bus.set("INDICATED AIRSPEED", 100.0, Unit::Knot).unwrap();
 
-    let ias = bus.get("INDICATED AIRSPEED", Unit::MetersPerSecond).unwrap();
+    let ias = bus
+        .get("INDICATED AIRSPEED", Unit::MetersPerSecond)
+        .unwrap();
     let out = gauge.run(&[ias], 0.02).unwrap();
     assert!((out[0] - ias * 0.5).abs() < 1e-9);
     let out = gauge.run(&[ias], 0.02).unwrap();

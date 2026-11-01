@@ -75,15 +75,14 @@ impl GaugeHost {
     /// accepted because the `wat` feature is enabled).
     pub fn new(wasm: &[u8]) -> Result<Self, GaugeError> {
         let engine = Engine::default();
-        let module = Module::new(&engine, wasm)
-            .map_err(|e| GaugeError::Module(e.to_string()))?;
+        let module = Module::new(&engine, wasm).map_err(|e| GaugeError::Module(e.to_string()))?;
         // A throwaway instance validates every required export.
         let mut probe = Store::new(&engine, ());
         let linker = Linker::new(&engine);
         let inst = linker
             .instantiate(&mut probe, &module)
             .map_err(|e| GaugeError::Instantiate(e.to_string()))?;
-        let inputs_fn = typed_export::< (), i32>(&mut probe, &inst, "gauge_inputs")?;
+        let inputs_fn = typed_export::<(), i32>(&mut probe, &inst, "gauge_inputs")?;
         let outputs_fn = typed_export::<(), i32>(&mut probe, &inst, "gauge_outputs")?;
         typed_export::<(i32, f64), ()>(&mut probe, &inst, "set_input")?;
         typed_export::<i32, f64>(&mut probe, &inst, "get_output")?;
@@ -269,7 +268,11 @@ mod tests {
             a.run(&[1000.0], 0.02).unwrap();
         }
         let b_out = b.run(&[1000.0], 0.02).unwrap();
-        assert!((b_out[0] - 300.0).abs() < 1e-9, "fresh instance saw {}", b_out[0]);
+        assert!(
+            (b_out[0] - 300.0).abs() < 1e-9,
+            "fresh instance saw {}",
+            b_out[0]
+        );
         // `a` kept its own state: EMA after 11 ticks at alpha = 0.3 is
         // 1000 * (1 - 0.7^11) = 980.2267…
         let a_out = a.run(&[1000.0], 0.02).unwrap();

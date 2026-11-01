@@ -61,11 +61,10 @@ fn declination_rad(day_of_year: f64) -> f64 {
 /// angle `Γ = 2π(N − 1)/365`, max error ≈ 0.5 minutes).
 fn equation_of_time_min(day_of_year: f64) -> f64 {
     let gamma = std::f64::consts::TAU * (day_of_year - 1.0) / 365.0;
-    229.18 * (0.000_075
-        + 0.001_868 * gamma.cos()
-        - 0.032_077 * gamma.sin()
-        + 0.014_615 * (2.0 * gamma).cos()
-        - 0.040_849 * (2.0 * gamma).sin())
+    229.18
+        * (0.000_075 + 0.001_868 * gamma.cos() - 0.032_077 * gamma.sin()
+            + 0.014_615 * (2.0 * gamma).cos()
+            - 0.040_849 * (2.0 * gamma).sin())
 }
 
 /// Solar position for `unix_s` at latitude/longitude (radians).
@@ -92,12 +91,18 @@ pub fn solar_position(unix_s: f64, lat_rad: f64, lon_rad: f64) -> SolarPosition 
     let cos_az = lat_rad.cos() * decl.sin() - lat_rad.sin() * decl.cos() * ha.cos();
     let azimuth = sin_az.atan2(cos_az).rem_euclid(std::f64::consts::TAU);
 
-    SolarPosition { elevation_rad: elevation, azimuth_rad: azimuth }
+    SolarPosition {
+        elevation_rad: elevation,
+        azimuth_rad: azimuth,
+    }
 }
 
 /// Convenience: current wall-clock UTC seconds since the epoch.
 pub fn unix_now() -> f64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs_f64())
+        .unwrap_or(0.0)
 }
 
 #[cfg(test)]
@@ -123,7 +128,11 @@ mod tests {
     fn sun_is_below_the_horizon_at_local_midnight() {
         let unix = 1_710_936_000.0 + 12.0 * 3_600.0; // 2024-03-21 00:00 UTC (local midnight at lon 0)
         let p = solar_position(unix, 0.0, 0.0);
-        assert!(p.elevation_rad < 0.0, "elevation {}°", p.elevation_rad.to_degrees());
+        assert!(
+            p.elevation_rad < 0.0,
+            "elevation {}°",
+            p.elevation_rad.to_degrees()
+        );
     }
 
     #[test]

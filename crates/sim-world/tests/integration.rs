@@ -17,10 +17,7 @@ fn unique_dir(tag: &str) -> PathBuf {
     use std::sync::atomic::{AtomicU64, Ordering};
     static N: AtomicU64 = AtomicU64::new(0);
     let n = N.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "sim-world-it-{tag}-{}-{n}",
-        std::process::id()
-    ));
+    let dir = std::env::temp_dir().join(format!("sim-world-it-{tag}-{}-{n}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
@@ -209,7 +206,10 @@ async fn missing_tile_gets_negative_entry_and_event() {
 
     // Negative answer is served locally from then on.
     let err2 = s.fetch(TileKind::Dem, id, 0).await.unwrap_err();
-    assert!(matches!(err2, sim_world::WorldError::TileUnavailable { .. }));
+    assert!(matches!(
+        err2,
+        sim_world::WorldError::TileUnavailable { .. }
+    ));
     let stats = s.stats().await.unwrap();
     assert_eq!(stats.cache.entries, 0);
     s.shutdown().await.unwrap();

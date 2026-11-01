@@ -65,7 +65,8 @@ impl std::fmt::Display for TileKind {
 ///
 /// Boxed so implementations stay object-safe while still promising `Send`
 /// (the streamer spawns every fetch onto the tokio runtime).
-pub type FetchFuture<'a> = Pin<Box<dyn Future<Output = crate::Result<Option<Vec<u8>>>> + Send + 'a>>;
+pub type FetchFuture<'a> =
+    Pin<Box<dyn Future<Output = crate::Result<Option<Vec<u8>>>> + Send + 'a>>;
 
 /// Asynchronous producer of raw tile bytes.
 ///
@@ -132,7 +133,8 @@ mod tests {
 
     fn unique_temp_dir(tag: &str) -> PathBuf {
         let n = UNIQUE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let dir = std::env::temp_dir().join(format!("sim-world-src-{tag}-{}-{n}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("sim-world-src-{tag}-{}-{n}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir

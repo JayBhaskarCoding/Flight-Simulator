@@ -35,7 +35,10 @@ impl FloatingOrigin {
     /// Create a floating origin at the given ECEF camera position with the
     /// given camera orientation (ECEF quaternion).
     pub fn new(camera_ecef: Ecef, camera_quat: DQuat) -> Self {
-        Self { camera_ecef: camera_ecef.as_dvec3(), camera_quat: camera_quat.normalize() }
+        Self {
+            camera_ecef: camera_ecef.as_dvec3(),
+            camera_quat: camera_quat.normalize(),
+        }
     }
 
     /// Create a floating origin from a geodetic camera position.

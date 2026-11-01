@@ -57,9 +57,13 @@ impl fmt::Display for GltfError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             GltfError::Malformed(m) => write!(f, "malformed glTF: {m}"),
-            GltfError::BadIndex { what, index } => write!(f, "glTF index out of range: {what}[{index}]"),
+            GltfError::BadIndex { what, index } => {
+                write!(f, "glTF index out of range: {what}[{index}]")
+            }
             GltfError::Unsupported(what, v) => write!(f, "unsupported glTF {what}: {v}"),
-            GltfError::UnsupportedExtension(e) => write!(f, "unsupported required glTF extension: {e}"),
+            GltfError::UnsupportedExtension(e) => {
+                write!(f, "unsupported required glTF extension: {e}")
+            }
             GltfError::BufferUri(u) => write!(f, "cannot fetch glTF buffer uri: {u}"),
             GltfError::ImageDecode(m) => write!(f, "glTF image decode failed: {m}"),
             GltfError::MissingPosition => write!(f, "glTF primitive has no POSITION attribute"),
@@ -365,7 +369,11 @@ fn decode_data_uri(uri: &str) -> Option<(String, Vec<u8>)> {
     let rest = uri.strip_prefix("data:")?;
     let (header, payload) = rest.split_once(',')?;
     let parts: Vec<&str> = header.split(';').collect();
-    let mime = parts.first().copied().unwrap_or("application/octet-stream").to_string();
+    let mime = parts
+        .first()
+        .copied()
+        .unwrap_or("application/octet-stream")
+        .to_string();
     let is_b64 = parts.contains(&"base64");
     if is_b64 {
         Some((mime, base64_decode(payload)?))
@@ -663,18 +671,21 @@ fn read_at(bytes: &[u8], off: usize, n: usize) -> Option<&[u8]> {
 /// Decode one accessor into `f32` scalars (row-major, `count ×
 /// components` values). Applies sparse overrides and `normalized`
 /// conversions.
-fn decode_accessor_f32(
-    doc: &Doc,
-    data: &[Vec<u8>],
-    acc_idx: usize,
-) -> Result<Vec<f32>, GltfError> {
-    let acc = doc
-        .accessors
-        .get(acc_idx)
-        .ok_or(GltfError::BadIndex { what: "accessors", index: acc_idx })?;
-    let component_type = acc.component_type.ok_or(GltfError::Malformed("accessor without componentType"))?;
-    let count = acc.count.ok_or(GltfError::Malformed("accessor without count"))?;
-    let kind = acc.kind.as_deref().ok_or(GltfError::Malformed("accessor without type"))?;
+fn decode_accessor_f32(doc: &Doc, data: &[Vec<u8>], acc_idx: usize) -> Result<Vec<f32>, GltfError> {
+    let acc = doc.accessors.get(acc_idx).ok_or(GltfError::BadIndex {
+        what: "accessors",
+        index: acc_idx,
+    })?;
+    let component_type = acc
+        .component_type
+        .ok_or(GltfError::Malformed("accessor without componentType"))?;
+    let count = acc
+        .count
+        .ok_or(GltfError::Malformed("accessor without count"))?;
+    let kind = acc
+        .kind
+        .as_deref()
+        .ok_or(GltfError::Malformed("accessor without type"))?;
     let comps = element_components(kind)?;
     let csize = component_size(component_type)?;
     let stride_elem = element_stride(kind, csize, comps);
@@ -683,13 +694,14 @@ fn decode_accessor_f32(
 
     // base data (bufferView is optional per spec: zeros when absent)
     if let Some(bv_idx) = acc.buffer_view {
-        let bv = doc
-            .buffer_views
-            .get(bv_idx)
-            .ok_or(GltfError::BadIndex { what: "bufferViews", index: bv_idx })?;
-        let buf = data
-            .get(bv.buffer)
-            .ok_or(GltfError::BadIndex { what: "buffers", index: bv.buffer })?;
+        let bv = doc.buffer_views.get(bv_idx).ok_or(GltfError::BadIndex {
+            what: "bufferViews",
+            index: bv_idx,
+        })?;
+        let buf = data.get(bv.buffer).ok_or(GltfError::BadIndex {
+            what: "buffers",
+            index: bv.buffer,
+        })?;
         let stride = bv.byte_stride.filter(|s| *s > 0).unwrap_or(stride_elem);
         if stride < stride_elem {
             return Err(GltfError::Malformed("byteStride smaller than element"));
@@ -713,28 +725,40 @@ fn decode_accessor_f32(
         let idx_type = sp.indices.component_type;
         let isize_ = component_size(idx_type)?;
         if isize_ != 1 && isize_ != 2 && isize_ != 4 {
-            return Err(GltfError::Unsupported("sparse index componentType", idx_type));
+            return Err(GltfError::Unsupported(
+                "sparse index componentType",
+                idx_type,
+            ));
         }
         let ibv = doc
             .buffer_views
             .get(sp.indices.buffer_view)
-            .ok_or(GltfError::BadIndex { what: "bufferViews", index: sp.indices.buffer_view })?;
+            .ok_or(GltfError::BadIndex {
+                what: "bufferViews",
+                index: sp.indices.buffer_view,
+            })?;
         let vbv = doc
             .buffer_views
             .get(sp.values.buffer_view)
-            .ok_or(GltfError::BadIndex { what: "bufferViews", index: sp.values.buffer_view })?;
-        let ibuf = data
-            .get(ibv.buffer)
-            .ok_or(GltfError::BadIndex { what: "buffers", index: ibv.buffer })?;
-        let vbuf = data
-            .get(vbv.buffer)
-            .ok_or(GltfError::BadIndex { what: "buffers", index: vbv.buffer })?;
+            .ok_or(GltfError::BadIndex {
+                what: "bufferViews",
+                index: sp.values.buffer_view,
+            })?;
+        let ibuf = data.get(ibv.buffer).ok_or(GltfError::BadIndex {
+            what: "buffers",
+            index: ibv.buffer,
+        })?;
+        let vbuf = data.get(vbv.buffer).ok_or(GltfError::BadIndex {
+            what: "buffers",
+            index: vbv.buffer,
+        })?;
         if sp.count > count {
             return Err(GltfError::Malformed("sparse count exceeds accessor count"));
         }
         for s in 0..sp.count {
             let ioff = ibv.byte_offset + sp.indices.byte_offset + s * isize_;
-            let ib = read_at(ibuf, ioff, isize_).ok_or(GltfError::Malformed("sparse index read"))?;
+            let ib =
+                read_at(ibuf, ioff, isize_).ok_or(GltfError::Malformed("sparse index read"))?;
             let mut raw = [0u8; 4];
             raw[..isize_].copy_from_slice(ib);
             let target = match isize_ {
@@ -765,16 +789,23 @@ fn decode_accessor_f32(
 /// Integers are read raw (never round-tripped through `f32`): `u32`
 /// indices beyond 2²⁴ would not survive the float conversion.
 fn decode_indices(doc: &Doc, data: &[Vec<u8>], acc_idx: usize) -> Result<Vec<u32>, GltfError> {
-    let acc = doc
-        .accessors
-        .get(acc_idx)
-        .ok_or(GltfError::BadIndex { what: "accessors", index: acc_idx })?;
-    let ct = acc.component_type.ok_or(GltfError::Malformed("accessor without componentType"))?;
+    let acc = doc.accessors.get(acc_idx).ok_or(GltfError::BadIndex {
+        what: "accessors",
+        index: acc_idx,
+    })?;
+    let ct = acc
+        .component_type
+        .ok_or(GltfError::Malformed("accessor without componentType"))?;
     if ct == 5126 {
         return Err(GltfError::Unsupported("index componentType", ct));
     }
-    let count = acc.count.ok_or(GltfError::Malformed("accessor without count"))?;
-    let kind = acc.kind.as_deref().ok_or(GltfError::Malformed("accessor without type"))?;
+    let count = acc
+        .count
+        .ok_or(GltfError::Malformed("accessor without count"))?;
+    let kind = acc
+        .kind
+        .as_deref()
+        .ok_or(GltfError::Malformed("accessor without type"))?;
     if element_components(kind)? != 1 {
         return Err(GltfError::Malformed("index accessor must be SCALAR"));
     }
@@ -782,19 +813,20 @@ fn decode_indices(doc: &Doc, data: &[Vec<u8>], acc_idx: usize) -> Result<Vec<u32
     let mut out = Vec::with_capacity(count);
 
     if let Some(bv_idx) = acc.buffer_view {
-        let bv = doc
-            .buffer_views
-            .get(bv_idx)
-            .ok_or(GltfError::BadIndex { what: "bufferViews", index: bv_idx })?;
-        let buf = data
-            .get(bv.buffer)
-            .ok_or(GltfError::BadIndex { what: "buffers", index: bv.buffer })?;
+        let bv = doc.buffer_views.get(bv_idx).ok_or(GltfError::BadIndex {
+            what: "bufferViews",
+            index: bv_idx,
+        })?;
+        let buf = data.get(bv.buffer).ok_or(GltfError::BadIndex {
+            what: "buffers",
+            index: bv.buffer,
+        })?;
         let stride = bv.byte_stride.filter(|s| *s > 0).unwrap_or(csize);
         let base = bv.byte_offset + acc.byte_offset.unwrap_or(0);
         for i in 0..count {
             let off = base + i * stride;
-            let raw = read_at(buf, off, csize)
-                .ok_or(GltfError::Malformed("index accessor read"))?;
+            let raw =
+                read_at(buf, off, csize).ok_or(GltfError::Malformed("index accessor read"))?;
             let v = match csize {
                 1 => raw[0] as u32,
                 2 => u16::from_le_bytes([raw[0], raw[1]]) as u32,
@@ -811,23 +843,32 @@ fn decode_indices(doc: &Doc, data: &[Vec<u8>], acc_idx: usize) -> Result<Vec<u32
         let ibv = doc
             .buffer_views
             .get(sp.indices.buffer_view)
-            .ok_or(GltfError::BadIndex { what: "bufferViews", index: sp.indices.buffer_view })?;
+            .ok_or(GltfError::BadIndex {
+                what: "bufferViews",
+                index: sp.indices.buffer_view,
+            })?;
         let vbv = doc
             .buffer_views
             .get(sp.values.buffer_view)
-            .ok_or(GltfError::BadIndex { what: "bufferViews", index: sp.values.buffer_view })?;
-        let ibuf = data
-            .get(ibv.buffer)
-            .ok_or(GltfError::BadIndex { what: "buffers", index: ibv.buffer })?;
-        let vbuf = data
-            .get(vbv.buffer)
-            .ok_or(GltfError::BadIndex { what: "buffers", index: vbv.buffer })?;
+            .ok_or(GltfError::BadIndex {
+                what: "bufferViews",
+                index: sp.values.buffer_view,
+            })?;
+        let ibuf = data.get(ibv.buffer).ok_or(GltfError::BadIndex {
+            what: "buffers",
+            index: ibv.buffer,
+        })?;
+        let vbuf = data.get(vbv.buffer).ok_or(GltfError::BadIndex {
+            what: "buffers",
+            index: vbv.buffer,
+        })?;
         if sp.count > count {
             return Err(GltfError::Malformed("sparse count exceeds accessor count"));
         }
         for s in 0..sp.count {
             let ioff = ibv.byte_offset + sp.indices.byte_offset + s * isize_;
-            let ib = read_at(ibuf, ioff, isize_).ok_or(GltfError::Malformed("sparse index read"))?;
+            let ib =
+                read_at(ibuf, ioff, isize_).ok_or(GltfError::Malformed("sparse index read"))?;
             let target = match isize_ {
                 1 => ib[0] as usize,
                 2 => u16::from_le_bytes([ib[0], ib[1]]) as usize,
@@ -898,12 +939,11 @@ fn smooth_normals(positions: &[Vec3], indices: &[u32]) -> Vec<Vec3> {
 }
 
 /// Build one mesh from one primitive.
-fn build_primitive(
-    doc: &Doc,
-    data: &[Vec<u8>],
-    prim: &Primitive,
-) -> Result<GltfMesh, GltfError> {
-    let pos_acc = *prim.attributes.get("POSITION").ok_or(GltfError::MissingPosition)?;
+fn build_primitive(doc: &Doc, data: &[Vec<u8>], prim: &Primitive) -> Result<GltfMesh, GltfError> {
+    let pos_acc = *prim
+        .attributes
+        .get("POSITION")
+        .ok_or(GltfError::MissingPosition)?;
     // Skinned geometry (JOINTS_0/WEIGHTS_0) would silently render in
     // bind pose without a skinning pipeline — reject loudly instead.
     if prim.attributes.contains_key("JOINTS_0") || prim.attributes.contains_key("WEIGHTS_0") {
@@ -925,7 +965,9 @@ fn build_primitive(
             if n.len() / 3 != vertex_count {
                 return Err(GltfError::Malformed("NORMAL count != POSITION count"));
             }
-            n.chunks_exact(3).map(|c| Vec3::new(c[0], c[1], c[2])).collect()
+            n.chunks_exact(3)
+                .map(|c| Vec3::new(c[0], c[1], c[2]))
+                .collect()
         }
         None => Vec::new(), // filled after indices are known
     };
@@ -947,7 +989,9 @@ fn build_primitive(
             if t.len() / 4 != vertex_count {
                 return Err(GltfError::Malformed("TANGENT count != POSITION count"));
             }
-            t.chunks_exact(4).map(|c| [c[0], c[1], c[2], c[3]]).collect()
+            t.chunks_exact(4)
+                .map(|c| [c[0], c[1], c[2], c[3]])
+                .collect()
         }
         None => vec![[0.0; 4]; vertex_count], // w = 0 ⇒ shader derives TBN
     };
@@ -969,7 +1013,9 @@ fn build_primitive(
     }
     if let Some(&mx) = indices.iter().max() {
         if mx as usize >= vertex_count {
-            return Err(GltfError::Malformed("index references a vertex past POSITION"));
+            return Err(GltfError::Malformed(
+                "index references a vertex past POSITION",
+            ));
         }
     }
 
@@ -1035,7 +1081,10 @@ fn decode_image_bytes(bytes: &[u8], hint: Option<&str>) -> Result<DecodedImage, 
     let is_png = bytes.len() >= 8 && bytes.starts_with(&[0x89, b'P', b'N', b'G']);
     let is_jpeg = bytes.len() >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF;
     let mime_ok = |m: Option<&str>| -> bool {
-        matches!(m, Some("image/png") | Some("image/jpeg") | Some("image/jpg"))
+        matches!(
+            m,
+            Some("image/png") | Some("image/jpeg") | Some("image/jpg")
+        )
     };
     if is_png || hint == Some("image/png") {
         decode_png(bytes)
@@ -1053,10 +1102,13 @@ fn decode_png(bytes: &[u8]) -> Result<DecodedImage, GltfError> {
     use png::Transformations;
     let mut decoder = png::Decoder::new(Cursor::new(bytes));
     decoder.set_transformations(Transformations::EXPAND | Transformations::STRIP_16);
-    let mut reader =
-        decoder.read_info().map_err(|e| GltfError::ImageDecode(e.to_string()))?;
+    let mut reader = decoder
+        .read_info()
+        .map_err(|e| GltfError::ImageDecode(e.to_string()))?;
     let mut buf = vec![0u8; reader.output_buffer_size()];
-    let info = reader.next_frame(&mut buf).map_err(|e| GltfError::ImageDecode(e.to_string()))?;
+    let info = reader
+        .next_frame(&mut buf)
+        .map_err(|e| GltfError::ImageDecode(e.to_string()))?;
     let w = info.width;
     let h = info.height;
     let rgba = match info.color_type {
@@ -1091,14 +1143,21 @@ fn decode_png(bytes: &[u8]) -> Result<DecodedImage, GltfError> {
     if rgba.len() != w as usize * h as usize * 4 {
         return Err(GltfError::ImageDecode("unexpected png frame size".into()));
     }
-    Ok(DecodedImage { width: w, height: h, rgba })
+    Ok(DecodedImage {
+        width: w,
+        height: h,
+        rgba,
+    })
 }
 
 fn decode_jpeg(bytes: &[u8]) -> Result<DecodedImage, GltfError> {
-    let mut decoder =
-        jpeg_decoder::Decoder::new(Cursor::new(bytes));
-    let pixels = decoder.decode().map_err(|e| GltfError::ImageDecode(e.to_string()))?;
-    let info = decoder.info().ok_or_else(|| GltfError::ImageDecode("jpeg without info".into()))?;
+    let mut decoder = jpeg_decoder::Decoder::new(Cursor::new(bytes));
+    let pixels = decoder
+        .decode()
+        .map_err(|e| GltfError::ImageDecode(e.to_string()))?;
+    let info = decoder
+        .info()
+        .ok_or_else(|| GltfError::ImageDecode("jpeg without info".into()))?;
     let (w, h) = (info.width as u32, info.height as u32);
     match info.pixel_format {
         jpeg_decoder::PixelFormat::L8 => {
@@ -1106,7 +1165,11 @@ fn decode_jpeg(bytes: &[u8]) -> Result<DecodedImage, GltfError> {
             for &v in &pixels {
                 out.extend_from_slice(&[v, v, v, 255]);
             }
-            Ok(DecodedImage { width: w, height: h, rgba: out })
+            Ok(DecodedImage {
+                width: w,
+                height: h,
+                rgba: out,
+            })
         }
         jpeg_decoder::PixelFormat::L16 => {
             let mut out = Vec::with_capacity(w as usize * h as usize * 4);
@@ -1114,14 +1177,22 @@ fn decode_jpeg(bytes: &[u8]) -> Result<DecodedImage, GltfError> {
                 let v = (u16::from_le_bytes([px[0], px[1]]) >> 8) as u8;
                 out.extend_from_slice(&[v, v, v, 255]);
             }
-            Ok(DecodedImage { width: w, height: h, rgba: out })
+            Ok(DecodedImage {
+                width: w,
+                height: h,
+                rgba: out,
+            })
         }
         jpeg_decoder::PixelFormat::RGB24 => {
             let mut out = Vec::with_capacity(w as usize * h as usize * 4);
             for px in pixels.chunks_exact(3) {
                 out.extend_from_slice(&[px[0], px[1], px[2], 255]);
             }
-            Ok(DecodedImage { width: w, height: h, rgba: out })
+            Ok(DecodedImage {
+                width: w,
+                height: h,
+                rgba: out,
+            })
         }
         jpeg_decoder::PixelFormat::CMYK32 => {
             // Adobe JPEG CMYK is stored inverted; un-invert then convert.
@@ -1133,7 +1204,11 @@ fn decode_jpeg(bytes: &[u8]) -> Result<DecodedImage, GltfError> {
                 let b = (y * k) / 255;
                 out.extend_from_slice(&[r as u8, g as u8, b as u8, 255]);
             }
-            Ok(DecodedImage { width: w, height: h, rgba: out })
+            Ok(DecodedImage {
+                width: w,
+                height: h,
+                rgba: out,
+            })
         }
     }
 }
@@ -1155,7 +1230,9 @@ impl<'a> GltfSource<'a> {
     /// images may still be data-URIs or relative to the file.
     pub fn from_file(path: &'a std::path::Path) -> Result<GltfModel, GltfError> {
         let bytes = std::fs::read(path).map_err(|e| GltfError::BufferUri(e.to_string()))?;
-        let src = Self { base_dir: path.parent() };
+        let src = Self {
+            base_dir: path.parent(),
+        };
         if bytes.len() >= 12 && &bytes[0..4] == b"glTF" {
             src.parse_glb(&bytes)
         } else {
@@ -1180,7 +1257,9 @@ impl<'a> GltfSource<'a> {
     /// Parse a GLB container: 12-byte header + JSON/BIN chunks.
     fn parse_glb(&self, bytes: &[u8]) -> Result<GltfModel, GltfError> {
         let u32le = |b: &[u8], o: usize| -> Result<u32, GltfError> {
-            let s = b.get(o..o + 4).ok_or(GltfError::Malformed("glb truncated"))?;
+            let s = b
+                .get(o..o + 4)
+                .ok_or(GltfError::Malformed("glb truncated"))?;
             Ok(u32::from_le_bytes([s[0], s[1], s[2], s[3]]))
         };
         let magic = u32le(bytes, 0)?;
@@ -1213,7 +1292,8 @@ impl<'a> GltfSource<'a> {
             off = body + len;
         }
         let json = json.ok_or(GltfError::Malformed("glb without JSON chunk"))?;
-        let text = std::str::from_utf8(&json).map_err(|_| GltfError::Malformed("glb json utf-8"))?;
+        let text =
+            std::str::from_utf8(&json).map_err(|_| GltfError::Malformed("glb json utf-8"))?;
         self.parse_json(text, bin)
     }
 
@@ -1304,7 +1384,11 @@ impl<'a> GltfSource<'a> {
                     metallic_factor: m.pbr.metallic_factor.unwrap_or(1.0),
                     roughness_factor: m.pbr.roughness_factor.unwrap_or(1.0),
                     emissive_factor: m.emissive_factor.unwrap_or([0.0; 3]),
-                    normal_scale: m.normal_texture.as_ref().and_then(|t| t.scale).unwrap_or(1.0),
+                    normal_scale: m
+                        .normal_texture
+                        .as_ref()
+                        .and_then(|t| t.scale)
+                        .unwrap_or(1.0),
                     occlusion_strength: m
                         .occlusion_texture
                         .as_ref()
@@ -1321,7 +1405,9 @@ impl<'a> GltfSource<'a> {
                     occlusion_texture: extra(
                         &m.occlusion_texture.as_ref().map(|t| (t.index, t.tex_coord)),
                     )?,
-                    emissive_texture: extra(&m.emissive_texture.as_ref().map(|t| (t.index, t.tex_coord)))?,
+                    emissive_texture: extra(
+                        &m.emissive_texture.as_ref().map(|t| (t.index, t.tex_coord)),
+                    )?,
                 })
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -1330,13 +1416,14 @@ impl<'a> GltfSource<'a> {
         let mut images = Vec::with_capacity(doc.images.len());
         for img in &doc.images {
             let bytes = if let Some(bv) = img.buffer_view {
-                let v = doc
-                    .buffer_views
-                    .get(bv)
-                    .ok_or(GltfError::BadIndex { what: "bufferViews", index: bv })?;
-                let buf = data
-                    .get(v.buffer)
-                    .ok_or(GltfError::BadIndex { what: "buffers", index: v.buffer })?;
+                let v = doc.buffer_views.get(bv).ok_or(GltfError::BadIndex {
+                    what: "bufferViews",
+                    index: bv,
+                })?;
+                let buf = data.get(v.buffer).ok_or(GltfError::BadIndex {
+                    what: "buffers",
+                    index: v.buffer,
+                })?;
                 buf.get(v.byte_offset..v.byte_offset + v.byte_length)
                     .ok_or(GltfError::Malformed("image bufferView out of range"))?
                     .to_vec()
@@ -1362,8 +1449,14 @@ impl<'a> GltfSource<'a> {
             if let Some(smp) = doc.samplers.get(s) {
                 if src < samplers.len() {
                     samplers[src] = GltfSampler {
-                        mag: smp.mag_filter.map(filter_from_code).unwrap_or(FilterMode::Linear),
-                        min: smp.min_filter.map(filter_from_code).unwrap_or(FilterMode::Linear),
+                        mag: smp
+                            .mag_filter
+                            .map(filter_from_code)
+                            .unwrap_or(FilterMode::Linear),
+                        min: smp
+                            .min_filter
+                            .map(filter_from_code)
+                            .unwrap_or(FilterMode::Linear),
                         wrap_s: smp.wrap_s.map(wrap_from_code).unwrap_or(WrapMode::Repeat),
                         wrap_t: smp.wrap_t.map(wrap_from_code).unwrap_or(WrapMode::Repeat),
                     };
@@ -1378,21 +1471,33 @@ impl<'a> GltfSource<'a> {
             let mut stack: Vec<(usize, Mat4)> =
                 scene.nodes.iter().map(|&n| (n, Mat4::IDENTITY)).collect();
             while let Some((ni, parent)) = stack.pop() {
-                let node = doc
-                    .nodes
-                    .get(ni)
-                    .ok_or(GltfError::BadIndex { what: "nodes", index: ni })?;
+                let node = doc.nodes.get(ni).ok_or(GltfError::BadIndex {
+                    what: "nodes",
+                    index: ni,
+                })?;
                 let world = parent * node_local_matrix(node);
                 if let Some(mesh_idx) = node.mesh {
                     // expand every primitive of the mesh as an instance
                     let mut pi = 0usize;
-                    while doc.meshes.get(mesh_idx).and_then(|m| m.primitives.get(pi)).is_some() {
-                        let mesh_id = *prim_to_mesh
-                            .get(&(mesh_idx, pi))
-                            .ok_or(GltfError::BadIndex { what: "primitives", index: pi })?;
-                        let material_override =
-                            doc.meshes[mesh_idx].primitives[pi].material;
-                        instances.push(GltfInstance { mesh: mesh_id, material_override, world });
+                    while doc
+                        .meshes
+                        .get(mesh_idx)
+                        .and_then(|m| m.primitives.get(pi))
+                        .is_some()
+                    {
+                        let mesh_id =
+                            *prim_to_mesh
+                                .get(&(mesh_idx, pi))
+                                .ok_or(GltfError::BadIndex {
+                                    what: "primitives",
+                                    index: pi,
+                                })?;
+                        let material_override = doc.meshes[mesh_idx].primitives[pi].material;
+                        instances.push(GltfInstance {
+                            mesh: mesh_id,
+                            material_override,
+                            world,
+                        });
                         pi += 1;
                     }
                 }
@@ -1401,7 +1506,10 @@ impl<'a> GltfSource<'a> {
                 }
             }
         } else if !doc.nodes.is_empty() {
-            return Err(GltfError::BadIndex { what: "scenes", index: active_scene });
+            return Err(GltfError::BadIndex {
+                what: "scenes",
+                index: active_scene,
+            });
         }
 
         Ok(GltfModel {
@@ -1434,7 +1542,10 @@ mod tests {
     fn base64_known_vectors() {
         assert_eq!(base64_decode("TQ==").as_deref(), Some(&[b'M'][..]));
         assert_eq!(base64_decode("TWE=").as_deref(), Some(&[b'M', b'a'][..]));
-        assert_eq!(base64_decode("TWFu").as_deref(), Some(&[b'M', b'a', b'n'][..]));
+        assert_eq!(
+            base64_decode("TWFu").as_deref(),
+            Some(&[b'M', b'a', b'n'][..])
+        );
         assert_eq!(
             base64_decode("aGVsbG8gd29ybGQ=").as_deref(),
             Some(b"hello world".as_slice())

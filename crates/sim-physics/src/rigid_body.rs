@@ -16,7 +16,10 @@ pub struct ForceTorque {
 
 impl ForceTorque {
     /// The zero wrench.
-    pub const ZERO: Self = Self { force_world: DVec3::ZERO, torque_body: DVec3::ZERO };
+    pub const ZERO: Self = Self {
+        force_world: DVec3::ZERO,
+        torque_body: DVec3::ZERO,
+    };
 }
 
 impl std::ops::Add for ForceTorque {
@@ -73,8 +76,24 @@ impl RigidBodyState {
     /// Level flight at `altitude_m` heading `heading_rad` clockwise from
     /// north (aeronautical heading), moving at `airspeed_mps`.
     pub fn level_flight(altitude_m: f64, heading_rad: f64, airspeed_mps: f64) -> Self {
-        let orientation = Self::upright_attitude(heading_rad);
-        let velocity_mps = orientation * DVec3::X * airspeed_mps;
+        Self::level_flight_with_pitch(altitude_m, heading_rad, airspeed_mps, 0.0)
+    }
+
+    /// Level translational flight with a body pitch angle relative to the
+    /// horizontal flight path. Positive pitch gives the wing a positive
+    /// angle of attack at launch, as required for lift.
+    pub fn level_flight_with_pitch(
+        altitude_m: f64,
+        heading_rad: f64,
+        airspeed_mps: f64,
+        pitch_rad: f64,
+    ) -> Self {
+        let orientation = Self::upright_attitude(heading_rad) * DQuat::from_rotation_y(pitch_rad);
+        let velocity_mps = DVec3::new(
+            airspeed_mps * heading_rad.sin(),
+            airspeed_mps * heading_rad.cos(),
+            0.0,
+        );
         Self {
             position_m: DVec3::new(0.0, 0.0, altitude_m),
             orientation,
@@ -229,7 +248,11 @@ impl RigidBody {
             return Err(InertiaError::NotPositiveDefinite);
         }
         let m = inertia_body;
-        let scale = m.x_axis.length().max(m.y_axis.length()).max(m.z_axis.length());
+        let scale = m
+            .x_axis
+            .length()
+            .max(m.y_axis.length())
+            .max(m.z_axis.length());
         let tol = 1e-9 * scale.max(1.0);
         for (a, b) in [
             (m.x_axis.y, m.y_axis.x),
@@ -269,7 +292,11 @@ impl RigidBody {
         let linv = invert_unit_lower(l)?;
         let dinv = DMat3::from_diagonal(DVec3::new(1.0 / d[0], 1.0 / d[1], 1.0 / d[2]));
         let inertia_body_inv = linv.transpose() * dinv * linv;
-        Ok(Self { mass_kg, inertia_body, inertia_body_inv })
+        Ok(Self {
+            mass_kg,
+            inertia_body,
+            inertia_body_inv,
+        })
     }
 
     /// Newton-Euler derivative for `(state, force_world, torque_body)`.
@@ -280,13 +307,14 @@ impl RigidBody {
     ) -> (DVec3, DQuat, DVec3, DVec3) {
         let d_position = state.velocity_mps;
         // body rates: q̇ = ½ q ⊗ ω_body
-        let d_orientation =
-            (state.orientation * DQuat::from_xyzw(
+        let d_orientation = (state.orientation
+            * DQuat::from_xyzw(
                 state.omega_body_radps.x,
                 state.omega_body_radps.y,
                 state.omega_body_radps.z,
                 0.0,
-            )) * 0.5;
+            ))
+            * 0.5;
         let d_velocity = forces.force_world / self.mass_kg;
         let i_omega = self.inertia_body * state.omega_body_radps;
         let gyro = state.omega_body_radps.cross(i_omega);
@@ -306,19 +334,39 @@ impl RigidBody {
         forces: impl Fn(&RigidBodyState) -> ForceTorque,
     ) -> RigidBodyState {
         let (p1, q1, v1, w1) = self.derivative(state, forces(state));
-        let k1 = StateDeriv { d_position: p1, d_orientation: quat_vec4(q1), d_velocity: v1, d_omega: w1 };
+        let k1 = StateDeriv {
+            d_position: p1,
+            d_orientation: quat_vec4(q1),
+            d_velocity: v1,
+            d_omega: w1,
+        };
 
         let s2 = state.combine(&k1, 0.5 * h).normalized();
         let (p2, q2, v2, w2) = self.derivative(&s2, forces(&s2));
-        let k2 = StateDeriv { d_position: p2, d_orientation: quat_vec4(q2), d_velocity: v2, d_omega: w2 };
+        let k2 = StateDeriv {
+            d_position: p2,
+            d_orientation: quat_vec4(q2),
+            d_velocity: v2,
+            d_omega: w2,
+        };
 
         let s3 = state.combine(&k2, 0.5 * h).normalized();
         let (p3, q3, v3, w3) = self.derivative(&s3, forces(&s3));
-        let k3 = StateDeriv { d_position: p3, d_orientation: quat_vec4(q3), d_velocity: v3, d_omega: w3 };
+        let k3 = StateDeriv {
+            d_position: p3,
+            d_orientation: quat_vec4(q3),
+            d_velocity: v3,
+            d_omega: w3,
+        };
 
         let s4 = state.combine(&k3, h).normalized();
         let (p4, q4, v4, w4) = self.derivative(&s4, forces(&s4));
-        let k4 = StateDeriv { d_position: p4, d_orientation: quat_vec4(q4), d_velocity: v4, d_omega: w4 };
+        let k4 = StateDeriv {
+            d_position: p4,
+            d_orientation: quat_vec4(q4),
+            d_velocity: v4,
+            d_omega: w4,
+        };
 
         // s' = s + (h/6)(k1 + 2k2 + 2k3 + k4)
         let sum = k1.add(&k2.scale(2.0)).add(&k3.scale(2.0)).add(&k4);
@@ -431,7 +479,11 @@ mod tests {
         }
         let l1 = s.angular_momentum_world(inertia);
         let e1 = s.kinetic_energy(body.mass_kg, inertia);
-        assert!((l1 - l0).length() < 1e-6 * l0.length(), "ΔL = {}", (l1 - l0).length());
+        assert!(
+            (l1 - l0).length() < 1e-6 * l0.length(),
+            "ΔL = {}",
+            (l1 - l0).length()
+        );
         assert!((e1 - e0).abs() < 1e-6 * e0, "ΔE = {}", e1 - e0);
     }
 
@@ -467,19 +519,20 @@ mod tests {
         // forward tilts toward −Z (world up from identity)
         let angle = omega * 5.0;
         let expected = DVec3::new(angle.cos(), 0.0, -angle.sin());
-        assert!((fwd - expected).length() < 1e-9, "fwd = {fwd}, expected = {expected}");
+        assert!(
+            (fwd - expected).length() < 1e-9,
+            "fwd = {fwd}, expected = {expected}"
+        );
     }
 
     #[test]
     fn inertia_validation() {
         assert!(RigidBody::try_from_mat3(1.0, DMat3::from_diagonal(DVec3::ONE)).is_ok());
         let asym = DMat3::from_cols_array(&[1.0, 0.2, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]);
-        assert!(
-            matches!(
-                RigidBody::try_from_mat3(1.0, asym),
-                Err(InertiaError::Asymmetric)
-            )
-        );
+        assert!(matches!(
+            RigidBody::try_from_mat3(1.0, asym),
+            Err(InertiaError::Asymmetric)
+        ));
         // positive definite but violating the triangle inequality is still
         // caught when a leading minor goes non-positive; a plain indefinite
         // matrix must fail:
@@ -526,5 +579,24 @@ mod tests {
         assert!((s.position_m.z - 300.0).abs() < 1e-12);
         let v = s.velocity_mps;
         assert!((v - DVec3::new(60.0, 0.0, 0.0)).length() < 1e-9, "v = {v}");
+    }
+
+    #[test]
+    fn trimmed_level_flight_has_horizontal_path_and_positive_angle_of_attack() {
+        let pitch = 4.0f64.to_radians();
+        let s = RigidBodyState::level_flight_with_pitch(
+            1_000.0,
+            std::f64::consts::FRAC_PI_2,
+            55.0,
+            pitch,
+        );
+        let forward = s.orientation * DVec3::X;
+        assert!(forward.z > 0.0, "body nose should be above the path");
+        assert!(s.velocity_mps.z.abs() < 1e-12, "path must remain level");
+        assert!((s.velocity_mps.x - 55.0).abs() < 1e-9);
+        assert!(
+            (forward.z.asin() - pitch).abs() < 1e-9,
+            "initial pitch must match the requested trim angle"
+        );
     }
 }

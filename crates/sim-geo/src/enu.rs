@@ -35,7 +35,12 @@ impl EnuFrame {
             DVec3::new(east.y, north.y, up.y),
             DVec3::new(east.z, north.z, up.z),
         );
-        Self { origin, origin_ecef, rotation, ellipsoid }
+        Self {
+            origin,
+            origin_ecef,
+            rotation,
+            ellipsoid,
+        }
     }
 
     /// Frame origin.
@@ -170,16 +175,22 @@ mod tests {
         let origin = f.origin_ecef();
         // At (0°N, 0°E): east = +Y ECEF, north = +Z ECEF, up = +X ECEF.
         // Offsets are measured from the frame origin.
-        let east = f.ecef_to_enu(&Ecef::from(origin.as_dvec3() + glam::DVec3::new(0.0, 10.0, 0.0)));
+        let east = f.ecef_to_enu(&Ecef::from(
+            origin.as_dvec3() + glam::DVec3::new(0.0, 10.0, 0.0),
+        ));
         assert!((east.east() - 10.0).abs() < 1e-9);
         assert!(east.north().abs() < 1e-9);
         assert!(east.up().abs() < 1e-9);
 
-        let up = f.ecef_to_enu(&Ecef::from(origin.as_dvec3() + glam::DVec3::new(1_000.0, 0.0, 0.0)));
+        let up = f.ecef_to_enu(&Ecef::from(
+            origin.as_dvec3() + glam::DVec3::new(1_000.0, 0.0, 0.0),
+        ));
         assert!((up.up() - 1_000.0).abs() < 1e-6);
         assert!(up.east().abs() < 1e-6 && up.north().abs() < 1e-6);
 
-        let north = f.ecef_to_enu(&Ecef::from(origin.as_dvec3() + glam::DVec3::new(0.0, 0.0, 7.0)));
+        let north = f.ecef_to_enu(&Ecef::from(
+            origin.as_dvec3() + glam::DVec3::new(0.0, 0.0, 7.0),
+        ));
         assert!((north.north() - 7.0).abs() < 1e-9);
         assert!(north.east().abs() < 1e-9 && north.up().abs() < 1e-9);
     }

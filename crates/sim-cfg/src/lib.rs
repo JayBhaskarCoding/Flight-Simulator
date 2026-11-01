@@ -47,7 +47,10 @@ pub use value::Value;
 use std::path::Path;
 
 /// The clean-room reference aircraft shipped with the repository.
-pub const REFERENCE_AIRCRAFT_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/aircraft/c172_cleanroom");
+pub const REFERENCE_AIRCRAFT_DIR: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../assets/aircraft/c172_cleanroom"
+);
 
 /// A fully loaded aircraft definition (all three cfg files).
 #[derive(Debug, Clone)]
@@ -64,24 +67,26 @@ impl AircraftDefinition {
     /// Load the three cfg files from an aircraft directory.
     pub fn load_dir(dir: impl AsRef<Path>) -> CfgResult<Self> {
         let dir = dir.as_ref();
-        let fm_text = std::fs::read_to_string(dir.join("flight_model.cfg")).map_err(|e| {
-            CfgError::Io { path: dir.join("flight_model.cfg").display().to_string(), source: e }
-        })?;
-        let eng_text = std::fs::read_to_string(dir.join("engines.cfg")).map_err(|e| {
-            CfgError::Io { path: dir.join("engines.cfg").display().to_string(), source: e }
-        })?;
-        let sys_text = std::fs::read_to_string(dir.join("systems.cfg")).map_err(|e| {
-            CfgError::Io { path: dir.join("systems.cfg").display().to_string(), source: e }
-        })?;
+        let fm_text =
+            std::fs::read_to_string(dir.join("flight_model.cfg")).map_err(|e| CfgError::Io {
+                path: dir.join("flight_model.cfg").display().to_string(),
+                source: e,
+            })?;
+        let eng_text =
+            std::fs::read_to_string(dir.join("engines.cfg")).map_err(|e| CfgError::Io {
+                path: dir.join("engines.cfg").display().to_string(),
+                source: e,
+            })?;
+        let sys_text =
+            std::fs::read_to_string(dir.join("systems.cfg")).map_err(|e| CfgError::Io {
+                path: dir.join("systems.cfg").display().to_string(),
+                source: e,
+            })?;
         Self::from_strs(&fm_text, &eng_text, &sys_text)
     }
 
     /// Parse the three cfg documents from strings.
-    pub fn from_strs(
-        flight_model: &str,
-        engines: &str,
-        systems: &str,
-    ) -> CfgResult<Self> {
+    pub fn from_strs(flight_model: &str, engines: &str, systems: &str) -> CfgResult<Self> {
         let fm = CfgFile::parse(flight_model, "flight_model.cfg")?;
         let eg = CfgFile::parse(engines, "engines.cfg")?;
         let sy = CfgFile::parse(systems, "systems.cfg")?;

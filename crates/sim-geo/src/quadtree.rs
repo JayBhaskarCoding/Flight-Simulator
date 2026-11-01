@@ -69,7 +69,12 @@ impl TileId {
     /// Root tile of a face.
     pub fn root(face: u8) -> Self {
         assert!(face < FACES, "face must be 0..6");
-        Self { face, level: 0, x: 0, y: 0 }
+        Self {
+            face,
+            level: 0,
+            x: 0,
+            y: 0,
+        }
     }
 
     /// All six roots.
@@ -108,7 +113,12 @@ impl TileId {
         }
         let l = self.level + 1;
         let (x, y) = (self.x * 2, self.y * 2);
-        let mk = |dx: u32, dy: u32| TileId { face: self.face, level: l, x: x + dx, y: y + dy };
+        let mk = |dx: u32, dy: u32| TileId {
+            face: self.face,
+            level: l,
+            x: x + dx,
+            y: y + dy,
+        };
         Some([mk(0, 0), mk(1, 0), mk(0, 1), mk(1, 1)])
     }
 
@@ -211,9 +221,17 @@ pub fn face_and_uv(dir: DVec3) -> (u8, f64, f64) {
     let ay = dir.y.abs();
     let az = dir.z.abs();
     let face = if ax >= ay && ax >= az {
-        if dir.x >= 0.0 { 0 } else { 1 }
+        if dir.x >= 0.0 {
+            0
+        } else {
+            1
+        }
     } else if ay >= az {
-        if dir.y >= 0.0 { 2 } else { 3 }
+        if dir.y >= 0.0 {
+            2
+        } else {
+            3
+        }
     } else if dir.z >= 0.0 {
         4
     } else {
@@ -233,7 +251,12 @@ pub fn tile_for_direction(dir: DVec3, level: u8) -> TileId {
     let g = 1u64 << level;
     let fx = (((u + 1.0) * 0.5 * g as f64).floor() as i64).clamp(0, g as i64 - 1) as u32;
     let fy = (((v + 1.0) * 0.5 * g as f64).floor() as i64).clamp(0, g as i64 - 1) as u32;
-    TileId { face, level, x: fx, y: fy }
+    TileId {
+        face,
+        level,
+        x: fx,
+        y: fy,
+    }
 }
 
 /// Parameters for [`select_tiles`].
@@ -289,10 +312,7 @@ pub fn select_tiles(
         let distance_center = (center - camera_ecef).length();
         let nearest = (distance_center - t.angular_radius() * sphere_radius_m).max(1.0);
         let apparent_err = t.geometric_error_m(sphere_radius_m) / distance_center.max(1.0);
-        if t.level < p.max_level
-            && nearest <= p.refine_radius_m
-            && apparent_err > p.tolerance_rad
-        {
+        if t.level < p.max_level && nearest <= p.refine_radius_m && apparent_err > p.tolerance_rad {
             if let Some(kids) = t.children() {
                 stack.extend_from_slice(&kids);
                 continue;
@@ -363,7 +383,16 @@ mod tests {
 
     #[test]
     fn corners_are_unit_vectors() {
-        for t in [TileId::root(0), TileId::root(3), TileId { face: 4, level: 7, x: 33, y: 100 }] {
+        for t in [
+            TileId::root(0),
+            TileId::root(3),
+            TileId {
+                face: 4,
+                level: 7,
+                x: 33,
+                y: 100,
+            },
+        ] {
             for c in t.corners() {
                 assert!((c.length() - 1.0).abs() < 1e-12, "corner not unit: {c}");
             }
@@ -373,21 +402,23 @@ mod tests {
 
     #[test]
     fn children_tile_the_parent_exactly() {
-        let parent = TileId { face: 0, level: 4, x: 5, y: 9 };
+        let parent = TileId {
+            face: 0,
+            level: 4,
+            x: 5,
+            y: 9,
+        };
         let kids = parent.children().expect("level 4 can subdivide");
         let (pu0, pu1, pv0, pv1) = parent.uv_range();
         let mid_u = (pu0 + pu1) / 2.0;
         let mid_v = (pv0 + pv1) / 2.0;
         // each child covers one quadrant of the parent uv box
-        let boxes = kids
-            .iter()
-            .map(|k| k.uv_range())
-            .collect::<Vec<_>>();
+        let boxes = kids.iter().map(|k| k.uv_range()).collect::<Vec<_>>();
         assert_eq!(boxes[0], (pu0, mid_u, pv0, mid_v)); // SW
         assert_eq!(boxes[1], (mid_u, pu1, pv0, mid_v)); // SE
         assert_eq!(boxes[2], (pu0, mid_u, mid_v, pv1)); // NW
         assert_eq!(boxes[3], (mid_u, pu1, mid_v, pv1)); // NE
-        // shared corners of children = parent corners + midpoints
+                                                        // shared corners of children = parent corners + midpoints
         for k in &kids {
             assert!(parent.is_ancestor_of(k));
             assert_eq!(k.parent(), Some(parent));
@@ -404,10 +435,18 @@ mod tests {
         // common cube edge must coincide (as sets) at every level.
         // Adjacency derived from the cube geometry itself:
         let adjacent: [(u8, u8); 12] = [
-            (0, 2), (0, 3), (0, 4), (0, 5), // +X touches +Y,-Y,+Z,-Z
-            (1, 2), (1, 3), (1, 4), (1, 5), // -X touches +Y,-Y,+Z,-Z
-            (2, 4), (2, 5),                 // +Y touches +Z,-Z
-            (3, 4), (3, 5),                 // -Y touches +Z,-Z
+            (0, 2),
+            (0, 3),
+            (0, 4),
+            (0, 5), // +X touches +Y,-Y,+Z,-Z
+            (1, 2),
+            (1, 3),
+            (1, 4),
+            (1, 5), // -X touches +Y,-Y,+Z,-Z
+            (2, 4),
+            (2, 5), // +Y touches +Z,-Z
+            (3, 4),
+            (3, 5), // -Y touches +Z,-Z
         ];
         for level in 0..4u8 {
             let g = 1i64 << level;
@@ -431,9 +470,16 @@ mod tests {
                 for p in &shared {
                     let on_a = pa.iter().any(|q| (q - *p).length() < 1e-9);
                     let on_b = pb.iter().any(|q| (q - *p).length() < 1e-9);
-                    assert!(on_a && on_b, "level {level} faces {fa},{fb}: point {p} missing");
+                    assert!(
+                        on_a && on_b,
+                        "level {level} faces {fa},{fb}: point {p} missing"
+                    );
                 }
-                assert_eq!(shared.len(), g as usize + 1, "level {level} faces {fa},{fb}");
+                assert_eq!(
+                    shared.len(),
+                    g as usize + 1,
+                    "level {level} faces {fa},{fb}"
+                );
             }
         }
     }
@@ -458,10 +504,7 @@ mod tests {
         pts.sort_by(|a, b| {
             a.x.partial_cmp(&b.x)
                 .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| {
-                    a.y.partial_cmp(&b.y)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                })
+                .then_with(|| a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal))
                 .then_with(|| a.z.partial_cmp(&b.z).unwrap_or(std::cmp::Ordering::Equal))
         });
         pts.dedup_by(|x, y| (*x - *y).length() < 1e-9);
@@ -472,7 +515,12 @@ mod tests {
 
     #[test]
     fn children_share_exact_edges_with_siblings() {
-        let p = TileId { face: 2, level: 6, x: 17, y: 42 };
+        let p = TileId {
+            face: 2,
+            level: 6,
+            x: 17,
+            y: 42,
+        };
         let k = p.children().unwrap();
         let ends_match = |a0: DVec3, a1: DVec3, b0: DVec3, b1: DVec3| {
             ((a0 - b0).length() < 1e-12 && (a1 - b1).length() < 1e-12)
@@ -515,7 +563,13 @@ mod tests {
                 // children of other faces must not contain it
                 for f in 0..6u8 {
                     if f != t.face {
-                        assert!(!TileId { face: f, level, x: t.x, y: t.y }.contains(dir));
+                        assert!(!TileId {
+                            face: f,
+                            level,
+                            x: t.x,
+                            y: t.y
+                        }
+                        .contains(dir));
                     }
                 }
             }
@@ -525,7 +579,12 @@ mod tests {
     #[test]
     fn parent_child_ancestor_logic() {
         let root = TileId::root(4);
-        let deep = TileId { face: 4, level: 5, x: 17, y: 3 };
+        let deep = TileId {
+            face: 4,
+            level: 5,
+            x: 17,
+            y: 3,
+        };
         assert!(root.is_ancestor_of(&deep));
         assert!(!deep.is_ancestor_of(&root));
         assert!(!TileId::root(5).is_ancestor_of(&deep));
@@ -542,8 +601,18 @@ mod tests {
 
     #[test]
     fn geometric_error_halves_per_level() {
-        let a = TileId { face: 0, level: 3, x: 0, y: 0 };
-        let b = TileId { face: 0, level: 4, x: 0, y: 0 };
+        let a = TileId {
+            face: 0,
+            level: 3,
+            x: 0,
+            y: 0,
+        };
+        let b = TileId {
+            face: 0,
+            level: 4,
+            x: 0,
+            y: 0,
+        };
         assert!((a.geometric_error_rad() / 2.0 - b.geometric_error_rad()).abs() < 1e-15);
         let err_m = a.geometric_error_m(WGS84.authalic_radius());
         // level 3 root error ≈ 0.9553/8 rad × R ≈ 761 km on Earth
@@ -586,7 +655,11 @@ mod tests {
 
         // a much closer camera with a deeper cap refines further
         let cam_near = cam_dir * (r + 5_000.0);
-        let p2 = SelectionParams { max_level: 16, refine_radius_m: 40_000.0, ..params };
+        let p2 = SelectionParams {
+            max_level: 16,
+            refine_radius_m: 40_000.0,
+            ..params
+        };
         let tiles_near = select_tiles(cam_near, r, p2);
         assert!(is_watertight_partition(&tiles_near));
         let max_depth = |v: &[TileId]| v.iter().map(|t| t.level).max().unwrap_or(0);
@@ -626,7 +699,12 @@ mod tests {
 
     #[test]
     fn center_lat_lon_matches_direction() {
-        let t = TileId { face: 0, level: 2, x: 1, y: 2 };
+        let t = TileId {
+            face: 0,
+            level: 2,
+            x: 1,
+            y: 2,
+        };
         let ll = t.center_lat_lon();
         let d = t.center();
         let back = DVec3::new(

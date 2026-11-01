@@ -93,12 +93,10 @@ impl Default for AutopilotConfig {
 
 impl AutopilotConfig {
     fn roll_pid(&self) -> Pid {
-        Pid::new(PidConfig::new(
-            self.roll_gains,
-            -self.aileron_limit,
-            self.aileron_limit,
+        Pid::new(
+            PidConfig::new(self.roll_gains, -self.aileron_limit, self.aileron_limit)
+                .with_derivative_on_measurement(),
         )
-        .with_derivative_on_measurement())
     }
 
     fn heading_pid(&self) -> Pid {
@@ -112,12 +110,10 @@ impl AutopilotConfig {
     }
 
     fn pitch_pid(&self) -> Pid {
-        Pid::new(PidConfig::new(
-            self.pitch_gains,
-            -self.elevator_limit,
-            self.elevator_limit,
+        Pid::new(
+            PidConfig::new(self.pitch_gains, -self.elevator_limit, self.elevator_limit)
+                .with_derivative_on_measurement(),
         )
-        .with_derivative_on_measurement())
     }
 
     fn altitude_pid(&self) -> Pid {
@@ -298,8 +294,15 @@ impl Autopilot {
 
         // ---- inner pitch reference ------------------------------------
         let pitch_cmd = match self.mode {
-            ApMode::AltitudeHold => self.altitude_pid.step(self.altitude_ref_ft, sample.altitude_ft, dt),
-            ApMode::VsHold => self.vs_pid.step(self.vs_ref_fpm, sample.vertical_speed_fpm, dt),
+            ApMode::AltitudeHold => {
+                self.pitch_ref_deg
+                    + self
+                        .altitude_pid
+                        .step(self.altitude_ref_ft, sample.altitude_ft, dt)
+            }
+            ApMode::VsHold => self
+                .vs_pid
+                .step(self.vs_ref_fpm, sample.vertical_speed_fpm, dt),
             _ => self.pitch_ref_deg,
         };
         let pitch_cmd = pitch_cmd.clamp(-self.config.max_pitch_deg, self.config.max_pitch_deg);
@@ -338,14 +341,17 @@ mod tests {
     fn off_mode_is_neutral() {
         let mut ap = Autopilot::with_defaults();
         let out = ap.step(&sample(), 0.02);
-        assert_eq!(out, ApOutput {
-            aileron: 0.0,
-            elevator: 0.0,
-            rudder: 0.0,
-            roll_reference_deg: 0.0,
-            pitch_reference_deg: 0.0,
-            mode: ApMode::Off,
-        });
+        assert_eq!(
+            out,
+            ApOutput {
+                aileron: 0.0,
+                elevator: 0.0,
+                rudder: 0.0,
+                roll_reference_deg: 0.0,
+                pitch_reference_deg: 0.0,
+                mode: ApMode::Off,
+            }
+        );
     }
 
     #[test]
@@ -368,12 +374,20 @@ mod tests {
         ap.set_mode(ApMode::HeadingHold, &s);
         ap.set_heading_target(90.0); // turn right
         let out = ap.step(&s, 0.02);
-        assert!(out.roll_reference_deg > 0.0, "bank cmd {}", out.roll_reference_deg);
+        assert!(
+            out.roll_reference_deg > 0.0,
+            "bank cmd {}",
+            out.roll_reference_deg
+        );
         assert!(out.aileron > 0.0, "aileron {}", out.aileron);
 
         ap.set_heading_target(270.0); // turn left (shortest way)
         let out = ap.step(&s, 0.02);
-        assert!(out.roll_reference_deg < 0.0, "bank cmd {}", out.roll_reference_deg);
+        assert!(
+            out.roll_reference_deg < 0.0,
+            "bank cmd {}",
+            out.roll_reference_deg
+        );
     }
 
     #[test]
@@ -385,7 +399,11 @@ mod tests {
         ap.set_mode(ApMode::HeadingHold, &s);
         ap.set_heading_target(10.0);
         let out = ap.step(&s, 0.02);
-        assert!(out.roll_reference_deg > 0.0, "bank cmd {}", out.roll_reference_deg);
+        assert!(
+            out.roll_reference_deg > 0.0,
+            "bank cmd {}",
+            out.roll_reference_deg
+        );
         assert!(out.roll_reference_deg <= ap.config().max_bank_deg);
     }
 
@@ -413,12 +431,30 @@ mod tests {
         ap.set_mode(ApMode::AltitudeHold, &s);
         ap.set_altitude_target(6_000.0); // 1000 ft to climb
         let out = ap.step(&s, 0.05);
-        assert!(out.pitch_reference_deg > 0.0, "pitch cmd {}", out.pitch_reference_deg);
+        assert!(
+            out.pitch_reference_deg > 0.0,
+            "pitch cmd {}",
+            out.pitch_reference_deg
+        );
         assert!(out.elevator > 0.0, "elevator {}", out.elevator);
 
         ap.set_altitude_target(4_000.0);
         let out = ap.step(&s, 0.05);
-        assert!(out.pitch_reference_deg < 0.0, "pitch cmd {}", out.pitch_reference_deg);
+        assert!(
+            out.pitch_reference_deg < 0.0,
+            "pitch cmd {}",
+            out.pitch_reference_deg
+        );
+    }
+
+    #[test]
+    fn altitude_hold_preserves_the_captured_pitch_trim() {
+        let mut ap = Autopilot::with_defaults();
+        let mut s = sample();
+        s.pitch_deg = 4.0;
+        ap.set_mode(ApMode::AltitudeHold, &s);
+        let out = ap.step(&s, 0.02);
+        assert!((out.pitch_reference_deg - 4.0).abs() < 1e-9);
     }
 
     #[test]
@@ -471,7 +507,10 @@ mod tests {
         ap.set_mode(ApMode::RollHold, &s);
         assert_eq!(ap.mode(), ApMode::RollHold);
         ap.set_mode(ApMode::AltitudeHold, &s);
-        let s5 = ApSample { altitude_ft: 9_000.0, ..sample() };
+        let s5 = ApSample {
+            altitude_ft: 9_000.0,
+            ..sample()
+        };
         ap.set_altitude_target(9_000.0);
         let first = ap.step(&s5, 0.05);
         // at target with zero integral and derivative priming -> zero

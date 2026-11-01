@@ -396,7 +396,13 @@ impl SimVarBus {
             None => {
                 // "zero" means zero *in the declaration unit* — this
                 // matters for scales with an offset (0 degC = 273.15 K).
-                map.insert(key, Entry { si: unit.to_si(0.0), dim: unit.dim() });
+                map.insert(
+                    key,
+                    Entry {
+                        si: unit.to_si(0.0),
+                        dim: unit.dim(),
+                    },
+                );
                 Ok(())
             }
         }
@@ -421,7 +427,13 @@ impl SimVarBus {
                     e.si = si;
                 }
                 None => {
-                    map.insert(key.clone(), Entry { si, dim: unit.dim() });
+                    map.insert(
+                        key.clone(),
+                        Entry {
+                            si,
+                            dim: unit.dim(),
+                        },
+                    );
                 }
             }
         }
@@ -464,7 +476,10 @@ impl SimVarBus {
     /// True when the variable exists (declared or written).
     pub fn contains(&self, name: &str) -> bool {
         let key = canon(name);
-        self.inner.read().expect("simvar map poisoned").contains_key(&key)
+        self.inner
+            .read()
+            .expect("simvar map poisoned")
+            .contains_key(&key)
     }
 
     /// SI snapshot of every variable (name -> value), for server replies.

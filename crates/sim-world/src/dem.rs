@@ -38,12 +38,7 @@ pub struct DemTile {
 
 impl DemTile {
     /// Build a tile, validating dimensions and payload length.
-    pub fn new(
-        id: TileId,
-        width: u32,
-        height: u32,
-        samples: Vec<f32>,
-    ) -> Result<Self, WorldError> {
+    pub fn new(id: TileId, width: u32, height: u32, samples: Vec<f32>) -> Result<Self, WorldError> {
         if !(DEM_MIN_DIM..=DEM_MAX_DIM).contains(&width)
             || !(DEM_MIN_DIM..=DEM_MAX_DIM).contains(&height)
         {
@@ -60,14 +55,8 @@ impl DemTile {
                 samples.len()
             )));
         }
-        if let Some((idx, v)) = samples
-            .iter()
-            .enumerate()
-            .find(|(_, v)| !v.is_finite())
-        {
-            return Err(WorldError::Dem(format!(
-                "sample {idx} is not finite ({v})"
-            )));
+        if let Some((idx, v)) = samples.iter().enumerate().find(|(_, v)| !v.is_finite()) {
+            return Err(WorldError::Dem(format!("sample {idx} is not finite ({v})")));
         }
         Ok(DemTile {
             id,
@@ -157,9 +146,7 @@ impl DemTile {
         }
         let mut samples = Vec::with_capacity(count);
         for chunk in bytes[12..].chunks_exact(4) {
-            samples.push(f32::from_le_bytes([
-                chunk[0], chunk[1], chunk[2], chunk[3],
-            ]));
+            samples.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
         }
         // `new` re-validates dimensions, length and finiteness. The
         // container carries no key; `decode_as` binds the real TileId.
@@ -282,10 +269,7 @@ mod tests {
 
     #[test]
     fn decode_reports_malformed_containers() {
-        assert!(matches!(
-            DemTile::decode(b"DEM"),
-            Err(WorldError::Dem(_))
-        ));
+        assert!(matches!(DemTile::decode(b"DEM"), Err(WorldError::Dem(_))));
         assert!(matches!(
             DemTile::decode(b"XXXX\x02\0\0\0\x02\0\0\0\0\0\0\0\0\0\0\0"),
             Err(WorldError::Dem(m)) if m.contains("bad magic")

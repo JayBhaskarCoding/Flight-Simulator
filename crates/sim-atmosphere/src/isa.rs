@@ -43,9 +43,7 @@ const BASE_H: [f64; LAYERS] = [
     0.0, 11_000.0, 20_000.0, 32_000.0, 47_000.0, 51_000.0, 71_000.0,
 ];
 /// Lapse rate of each layer (K/m).
-const LAPSE: [f64; LAYERS] = [
-    -6.5e-3, 0.0, 1.0e-3, 2.8e-3, 0.0, -2.8e-3, -2.0e-3,
-];
+const LAPSE: [f64; LAYERS] = [-6.5e-3, 0.0, 1.0e-3, 2.8e-3, 0.0, -2.8e-3, -2.0e-3];
 /// Top of the model (geopotential m).
 const TOP_H: f64 = 84_852.0;
 
@@ -61,7 +59,10 @@ pub struct IsaConditions {
 
 impl Default for IsaConditions {
     fn default() -> Self {
-        Self { delta_t_k: 0.0, sea_level_pressure_pa: P0 }
+        Self {
+            delta_t_k: 0.0,
+            sea_level_pressure_pa: P0,
+        }
     }
 }
 
@@ -167,7 +168,12 @@ impl IsaModel {
                 base_p[i] = base_p[i - 1] * (base_t[i] / base_t[i - 1]).powf(exponent);
             }
         }
-        Self { base_h: BASE_H, base_t, base_p, lapse: LAPSE }
+        Self {
+            base_h: BASE_H,
+            base_t,
+            base_p,
+            lapse: LAPSE,
+        }
     }
 
     /// Standard-day convenience model.
@@ -296,9 +302,21 @@ mod tests {
         let s = IsaModel::standard().at_geometric_m(0.0);
         assert!((s.temperature_k - 288.15).abs() < 1e-9);
         assert!((s.pressure_pa - 101_325.0).abs() < 1e-6);
-        assert!((s.density_kg_m3 - 1.225).abs() < 1e-3, "rho={}", s.density_kg_m3);
-        assert!((s.speed_of_sound_mps - 340.29).abs() < 0.02, "a={}", s.speed_of_sound_mps);
-        assert!((s.dynamic_viscosity_pa_s - 1.789e-5).abs() < 3e-7, "mu={}", s.dynamic_viscosity_pa_s);
+        assert!(
+            (s.density_kg_m3 - 1.225).abs() < 1e-3,
+            "rho={}",
+            s.density_kg_m3
+        );
+        assert!(
+            (s.speed_of_sound_mps - 340.29).abs() < 0.02,
+            "a={}",
+            s.speed_of_sound_mps
+        );
+        assert!(
+            (s.dynamic_viscosity_pa_s - 1.789e-5).abs() < 3e-7,
+            "mu={}",
+            s.dynamic_viscosity_pa_s
+        );
     }
 
     #[test]
@@ -315,7 +333,11 @@ mod tests {
         ];
         for (h, t, p) in cases {
             let s = m.at_geopotential_m(h);
-            assert!((s.temperature_k - t).abs() < 0.01, "T at {h}: {}", s.temperature_k);
+            assert!(
+                (s.temperature_k - t).abs() < 0.01,
+                "T at {h}: {}",
+                s.temperature_k
+            );
             assert!(
                 (s.pressure_pa - p).abs() < TABLE_TOL_P.max(p * 1e-4),
                 "p at {h}: {} vs {p}",
@@ -345,21 +367,33 @@ mod tests {
             let b = m.at_geopotential_m(hb + 1e-3);
             let pr = (b.pressure_pa - a.pressure_pa).abs() / a.pressure_pa;
             assert!(pr < 1e-5, "pressure jump at {hb}: {pr:e}");
-            assert!((b.temperature_k - a.temperature_k).abs() < 0.001, "T jump at {hb}");
+            assert!(
+                (b.temperature_k - a.temperature_k).abs() < 0.001,
+                "T jump at {hb}"
+            );
         }
     }
 
     #[test]
     fn non_standard_day_shifts_profile() {
-        let hot = IsaModel::new(IsaConditions { delta_t_k: 10.0, sea_level_pressure_pa: P0 });
+        let hot = IsaModel::new(IsaConditions {
+            delta_t_k: 10.0,
+            sea_level_pressure_pa: P0,
+        });
         let std = IsaModel::standard();
         let hs = std.at_geometric_m(0.0);
         let hh = hot.at_geometric_m(0.0);
         assert!((hh.temperature_k - hs.temperature_k - 10.0).abs() < 1e-9);
         assert!((hh.pressure_pa - hs.pressure_pa).abs() < 1e-6);
-        assert!(hh.density_kg_m3 < hs.density_kg_m3, "hot air must be lighter");
+        assert!(
+            hh.density_kg_m3 < hs.density_kg_m3,
+            "hot air must be lighter"
+        );
 
-        let low = IsaModel::new(IsaConditions { delta_t_k: 0.0, sea_level_pressure_pa: 99_000.0 });
+        let low = IsaModel::new(IsaConditions {
+            delta_t_k: 0.0,
+            sea_level_pressure_pa: 99_000.0,
+        });
         let l = low.at_geometric_m(0.0);
         assert!((l.pressure_pa - 99_000.0).abs() < 1e-6);
         assert!((l.density_kg_m3 - 99_000.0 / (R_DRY_AIR * T0)).abs() < 1e-9);

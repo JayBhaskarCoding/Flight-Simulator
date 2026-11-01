@@ -39,7 +39,10 @@ impl PlaneGround {
 
 impl GroundProvider for PlaneGround {
     fn surface_at(&self, _x: f64, _y: f64) -> GroundSurface {
-        GroundSurface { height_m: self.height_m, normal: DVec3::Z }
+        GroundSurface {
+            height_m: self.height_m,
+            normal: DVec3::Z,
+        }
     }
 }
 
@@ -140,13 +143,17 @@ pub struct GearLeg {
 impl GearLeg {
     /// New leg with the wheel fully extended.
     pub fn new(config: GearLegConfig) -> Self {
-        Self { config, compression_m: 0.0, normal_load_n: 0.0, in_contact: false }
+        Self {
+            config,
+            compression_m: 0.0,
+            normal_load_n: 0.0,
+            in_contact: false,
+        }
     }
 
     /// Fully extended world contact patch of this leg for `state`.
     pub fn contact_point_world(&self, state: &RigidBodyState) -> DVec3 {
-        let patch_body =
-            self.config.attach_body + DVec3::new(0.0, 0.0, self.config.strut_length_m);
+        let patch_body = self.config.attach_body + DVec3::new(0.0, 0.0, self.config.strut_length_m);
         state.position_m + state.orientation * patch_body
     }
 }
@@ -207,8 +214,7 @@ pub fn solve_leg(
     let extra = (depth - cfg.max_compression_m).max(0.0);
 
     let r_world = state.orientation * patch_body;
-    let v_patch =
-        state.velocity_mps + state.orientation * state.omega_body_radps.cross(patch_body);
+    let v_patch = state.velocity_mps + state.orientation * state.omega_body_radps.cross(patch_body);
     let v_normal = v_patch.dot(normal);
     let compression_rate = -v_normal; // positive while compressing
 
@@ -274,7 +280,11 @@ pub fn solve_leg(
     let force_world = normal * normal_load + fwd_world * f_long + lat_world * f_lat;
     let torque_body = state.orientation.conjugate() * r_world.cross(force_world);
 
-    GearContact { force_world, torque_body, bottomed_out }
+    GearContact {
+        force_world,
+        torque_body,
+        bottomed_out,
+    }
 }
 
 #[cfg(test)]
@@ -289,7 +299,10 @@ mod tests {
             4_000.0,
             0.25,
             0.3,
-            GearAxle::Custom { steerable: true, braked: true },
+            GearAxle::Custom {
+                steerable: true,
+                braked: true,
+            },
         )
     }
 
@@ -308,7 +321,12 @@ mod tests {
             position_m: DVec3::new(0.0, 0.0, 100.0),
             ..Default::default()
         };
-        let c = solve_leg(&mut leg, &state, &PlaneGround::new(0.0), &ControlInputs::default());
+        let c = solve_leg(
+            &mut leg,
+            &state,
+            &PlaneGround::new(0.0),
+            &ControlInputs::default(),
+        );
         assert_eq!(c.force_world, DVec3::ZERO);
         assert!(!leg.in_contact);
     }
@@ -326,7 +344,12 @@ mod tests {
             position_m: DVec3::new(0.0, 0.0, -depth - 0.9),
             ..Default::default()
         };
-        let c = solve_leg(&mut leg, &state, &PlaneGround::new(0.0), &ControlInputs::default());
+        let c = solve_leg(
+            &mut leg,
+            &state,
+            &PlaneGround::new(0.0),
+            &ControlInputs::default(),
+        );
         assert!(c.force_world.z > 0.0);
         assert!((c.force_world.z - mg).abs() < 1e-6, "{}", c.force_world.z);
         assert!(leg.in_contact);
@@ -340,7 +363,12 @@ mod tests {
             position_m: DVec3::new(0.0, 0.0, -2.0), // patch 1.1 m below ground
             ..Default::default()
         };
-        let c = solve_leg(&mut leg, &state, &PlaneGround::new(0.0), &ControlInputs::default());
+        let c = solve_leg(
+            &mut leg,
+            &state,
+            &PlaneGround::new(0.0),
+            &ControlInputs::default(),
+        );
         assert!(c.bottomed_out);
         // mechanical stop carries far more than the plain spring travel
         let plain = 60_000.0 * leg.config.max_compression_m;
@@ -356,10 +384,19 @@ mod tests {
             velocity_mps: DVec3::new(0.0, 20.0, 0.0), // huge sideslip
             ..Default::default()
         };
-        let c = solve_leg(&mut leg, &state, &PlaneGround::new(0.0), &ControlInputs::default());
+        let c = solve_leg(
+            &mut leg,
+            &state,
+            &PlaneGround::new(0.0),
+            &ControlInputs::default(),
+        );
         let n = leg.normal_load_n;
         let f_lat = c.force_world.y; // lat axis at zero heading/steer is +Y
-        assert!(f_lat.abs() <= leg.config.mu_lat * n + 1e-6, "{f_lat} vs {}", leg.config.mu_lat * n);
+        assert!(
+            f_lat.abs() <= leg.config.mu_lat * n + 1e-6,
+            "{f_lat} vs {}",
+            leg.config.mu_lat * n
+        );
         assert!(f_lat < 0.0, "must oppose the +Y slip: {f_lat}");
     }
 
@@ -373,12 +410,18 @@ mod tests {
                 velocity_mps: DVec3::new(15.0, 0.0, 0.0),
                 ..Default::default()
             };
-            let controls = ControlInputs { brake, ..Default::default() };
+            let controls = ControlInputs {
+                brake,
+                ..Default::default()
+            };
             solve_leg(leg, &state, &PlaneGround::new(0.0), &controls)
         };
         let rolling = mk(0.0, &mut leg);
         let braking = mk(1.0, &mut leg);
-        assert!(braking.force_world.x < rolling.force_world.x, "brake must pull back");
+        assert!(
+            braking.force_world.x < rolling.force_world.x,
+            "brake must pull back"
+        );
         assert!(braking.force_world.x < 0.0);
         // rolling resistance alone must also oppose motion
         assert!(rolling.force_world.x < 0.0);
@@ -393,10 +436,17 @@ mod tests {
             velocity_mps: DVec3::new(10.0, 0.0, 0.0),
             ..Default::default()
         };
-        let controls = ControlInputs { steering: 1.0, ..Default::default() };
+        let controls = ControlInputs {
+            steering: 1.0,
+            ..Default::default()
+        };
         let c = solve_leg(&mut leg, &state, &PlaneGround::new(0.0), &controls);
         // rolling forward with the wheel steered right: tyre forces must
         // include a rightward (+Y) component
-        assert!(c.force_world.y > 0.0, "steered tyre must push right: {}", c.force_world.y);
+        assert!(
+            c.force_world.y > 0.0,
+            "steered tyre must push right: {}",
+            c.force_world.y
+        );
     }
 }

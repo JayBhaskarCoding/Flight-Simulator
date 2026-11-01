@@ -32,6 +32,7 @@ pub mod dem;
 pub mod osm;
 pub mod source;
 pub mod streamer;
+pub mod terrain_mesh;
 
 pub use cache::{CacheKey, CacheStats, TileCache};
 pub use dem::DemTile;
@@ -41,6 +42,7 @@ pub use streamer::{
     ResidentState, StreamerConfig, StreamerStats, TileEvent, TileEventPayload, TileFetch,
     TileStreamer,
 };
+pub use terrain_mesh::{TerrainMesh, TerrainVertex};
 
 use sim_geo::quadtree::TileId;
 use std::fmt;

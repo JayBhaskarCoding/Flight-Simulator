@@ -302,7 +302,9 @@ async fn dispatch<W: AsyncWriteExt + Unpin>(
     match kind {
         msg::HELLO => {
             if body.len() < 6 {
-                return send_error(tx, err::MALFORMED, "short HELLO").await.map(|_| false);
+                return send_error(tx, err::MALFORMED, "short HELLO")
+                    .await
+                    .map(|_| false);
             }
             let version = u32::from_be_bytes(body[0..4].try_into().unwrap());
             if version != PROTOCOL_VERSION {
@@ -389,7 +391,9 @@ async fn dispatch<W: AsyncWriteExt + Unpin>(
                     .await
                     .map(|_| false);
             }
-            send_frame(tx, msg::STOPPED, &req_id.to_be_bytes()).await.map(|_| false)
+            send_frame(tx, msg::STOPPED, &req_id.to_be_bytes())
+                .await
+                .map(|_| false)
         }
         msg::BYE => Ok(true),
         other => {
@@ -434,8 +438,7 @@ fn parse_define(body: &[u8]) -> DefineResult {
     for _ in 0..count {
         let name = take_str(body, &mut pos).map_err(|m| (err::MALFORMED, m))?;
         let unit_raw = take_str(body, &mut pos).map_err(|m| (err::MALFORMED, m))?;
-        let unit = parse_unit(&unit_raw)
-            .map_err(|m| (err::BAD_UNIT, format!("{name}: {m}")))?;
+        let unit = parse_unit(&unit_raw).map_err(|m| (err::BAD_UNIT, format!("{name}: {m}")))?;
         out.push((name, unit));
     }
     if pos != body.len() {
@@ -463,11 +466,7 @@ fn take_str(body: &[u8], pos: &mut usize) -> Result<String, String> {
     Ok(s)
 }
 
-async fn send_frame<W: AsyncWriteExt + Unpin>(
-    tx: &mut W,
-    kind: u8,
-    body: &[u8],
-) -> io::Result<()> {
+async fn send_frame<W: AsyncWriteExt + Unpin>(tx: &mut W, kind: u8, body: &[u8]) -> io::Result<()> {
     let payload_len = (body.len() + 1) as u32;
     tx.write_all(&payload_len.to_be_bytes()).await?;
     tx.write_all(&[kind]).await?;

@@ -12,3 +12,4 @@ glam.workspace = true
 sim-geo = { path = "../sim-geo" }
 tokio.workspace = true
 rusqlite.workspace = true
+png = "0.17"

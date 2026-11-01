@@ -1,8 +1,8 @@
 //! `engines.cfg` typed loader: piston engine + propeller.
 
 use crate::error::{CfgError, CfgResult};
-use crate::parser::CfgFile;
 use crate::geometry::{LB_TO_KG, SLUG_FT2_TO_KG_M2};
+use crate::parser::CfgFile;
 
 /// Horsepower → watts.
 pub const HP_TO_W: f64 = 745.699_871_582_270_2;
@@ -166,7 +166,11 @@ impl EngineDefinition {
 
         let fuel_type = eng.text_or("fuel_type", "100LL")?;
 
-        let doc = Self { fuel_type, piston, propeller };
+        let doc = Self {
+            fuel_type,
+            piston,
+            propeller,
+        };
         doc.validate()?;
         Ok(doc)
     }
@@ -244,7 +248,9 @@ mod tests {
         assert!((e.piston.displacement_l - 360.0 * 0.016387064).abs() < 1e-9);
         assert!((e.piston.max_power_w - 180.0 * HP_TO_W).abs() < 1e-6);
         // 2700 rpm = 282.74 rad/s
-        assert!((e.piston.max_angular_velocity - 2700.0 * std::f64::consts::TAU / 60.0).abs() < 1e-9);
+        assert!(
+            (e.piston.max_angular_velocity - 2700.0 * std::f64::consts::TAU / 60.0).abs() < 1e-9
+        );
         assert!((e.propeller.diameter_m - 76.0 * IN_TO_M).abs() < 1e-12);
         assert_eq!(e.propeller.blades, 3);
         assert!(!e.propeller.constant_speed);
@@ -256,7 +262,10 @@ mod tests {
         // full power 180 hp ≈ 134 kW, bsfc 0.45 lb/hp/h ≈ 56.7 kg/h
         let flow = e.piston.fuel_flow_kg_s(e.piston.max_power_w);
         let kg_per_h = flow * 3600.0;
-        assert!((kg_per_h - 180.0 * 0.45 / 2.2046226).abs() < 0.5, "{kg_per_h} kg/h");
+        assert!(
+            (kg_per_h - 180.0 * 0.45 / 2.2046226).abs() < 0.5,
+            "{kg_per_h} kg/h"
+        );
         // idle power: throttle 0 → accessory-limited, still non-negative
         assert!(e.piston.power_at(0.0) >= 0.0);
         assert!(e.piston.power_at(1.0) > 130_000.0);

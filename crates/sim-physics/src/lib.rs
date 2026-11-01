@@ -44,9 +44,11 @@ pub mod rigid_body;
 pub mod world;
 
 pub use aero::{AeroForces, AeroSolver, AtmosphereSample, ControlInputs, ElementModel};
-pub use gear::{GearAxle, GearContact, GearLeg, GearLegConfig, GroundProvider, GroundSurface, PlaneGround};
+pub use gear::{
+    GearAxle, GearContact, GearLeg, GearLegConfig, GroundProvider, GroundSurface, PlaneGround,
+};
 pub use rigid_body::{ForceTorque, InertiaError, RigidBody, RigidBodyState};
-pub use world::{StepDiagnostics, PhysicsWorld, DT, SIM_RATE_HZ};
+pub use world::{PhysicsWorld, StepDiagnostics, DT, SIM_RATE_HZ};
 
 /// Standard gravity, m/s² (ISA / NIST SP 811).
 pub const G0: f64 = 9.806_65;

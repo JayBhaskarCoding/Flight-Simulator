@@ -33,7 +33,9 @@ pub struct Section {
 impl Section {
     /// Case-insensitive lookup of an entry, ignoring the index.
     pub fn find(&self, key: &str) -> Option<&Entry> {
-        self.entries.iter().find(|e| e.key.eq_ignore_ascii_case(key))
+        self.entries
+            .iter()
+            .find(|e| e.key.eq_ignore_ascii_case(key))
     }
 
     /// Case-insensitive lookup of an indexed entry.
@@ -266,7 +268,10 @@ impl CfgFile {
                         format!("unexpected text after section header: '{trailing}'"),
                     ));
                 }
-                match sections.iter().position(|s| s.name.eq_ignore_ascii_case(name)) {
+                match sections
+                    .iter()
+                    .position(|s| s.name.eq_ignore_ascii_case(name))
+                {
                     Some(i) => current = Some(i),
                     None => {
                         sections.push(Section {
@@ -309,12 +314,17 @@ impl CfgFile {
         if !root.entries.is_empty() {
             sections.insert(0, root);
         }
-        Ok(Self { file: file.to_string(), sections })
+        Ok(Self {
+            file: file.to_string(),
+            sections,
+        })
     }
 
     /// Case-insensitive section lookup by name.
     pub fn section(&self, name: &str) -> Option<&Section> {
-        self.sections.iter().find(|s| s.name.eq_ignore_ascii_case(name))
+        self.sections
+            .iter()
+            .find(|s| s.name.eq_ignore_ascii_case(name))
     }
 
     /// Required section lookup.
@@ -329,8 +339,7 @@ impl CfgFile {
     /// used for variant sections like `FUEL.left_tank`.
     pub fn section_prefix(&self, prefix: &str) -> Option<&Section> {
         self.sections.iter().find(|s| {
-            s.name
-                .eq_ignore_ascii_case(prefix)
+            s.name.eq_ignore_ascii_case(prefix)
                 || s.name
                     .to_ascii_lowercase()
                     .starts_with(&format!("{}.", prefix.to_ascii_lowercase()))
@@ -354,10 +363,7 @@ fn strip_comment(line: &str) -> &str {
             None => {
                 if b == b'"' || b == b'\'' {
                     in_quote = Some(b);
-                } else if b == b'#'
-                    || b == b';'
-                    || (b == b'/' && bytes.get(i + 1) == Some(&b'/'))
-                {
+                } else if b == b'#' || b == b';' || (b == b'/' && bytes.get(i + 1) == Some(&b'/')) {
                     // `#`, `;` or `//` comment starts here
                     return &line[..i];
                 }
@@ -418,7 +424,10 @@ nested = -7
         assert_eq!(s.name, "SECTION");
         assert_eq!(s.f64("key").unwrap(), 1.5);
         assert_eq!(s.vec("other").unwrap(), vec![3.0, 4.0, 5.0]);
-        assert_eq!(s.find_indexed("other", 2).unwrap().value, Value::Vector(vec![3.0, 4.0, 5.0]));
+        assert_eq!(
+            s.find_indexed("other", 2).unwrap().value,
+            Value::Vector(vec![3.0, 4.0, 5.0])
+        );
         assert_eq!(s.text("name").unwrap(), "quoted ; string");
         assert!(s.bool("flag").unwrap());
         let sub = f.section("SECTION.sub").unwrap();
@@ -443,7 +452,10 @@ nested = -7
 
         let e = CfgFile::parse("[A]\nk = abc\n", "x.cfg").unwrap();
         let e = e.section("A").unwrap().f64("k").unwrap_err();
-        assert!(e.to_string().contains("x.cfg:2") && e.to_string().contains("expects a number"), "{e}");
+        assert!(
+            e.to_string().contains("x.cfg:2") && e.to_string().contains("expects a number"),
+            "{e}"
+        );
     }
 
     #[test]
@@ -485,7 +497,11 @@ nested = -7
     #[test]
     fn range_checks() {
         let f = CfgFile::parse("[A]\nalpha = 95\n", "x.cfg").unwrap();
-        let e = f.section("A").unwrap().f64_in("alpha", -20.0, 20.0).unwrap_err();
+        let e = f
+            .section("A")
+            .unwrap()
+            .f64_in("alpha", -20.0, 20.0)
+            .unwrap_err();
         assert!(e.to_string().contains("outside [-20, 20]"), "{e}");
     }
 

@@ -33,8 +33,7 @@ pub fn distance_m(a: &LatLonAlt, b: &LatLonAlt, ellipsoid: Ellipsoid) -> f64 {
     let (phi1, phi2) = (a.latitude_rad(), b.latitude_rad());
     let dphi = phi2 - phi1;
     let dlam = b.longitude_rad() - a.longitude_rad();
-    let h = (dphi / 2.0).sin().powi(2)
-        + phi1.cos() * phi2.cos() * (dlam / 2.0).sin().powi(2);
+    let h = (dphi / 2.0).sin().powi(2) + phi1.cos() * phi2.cos() * (dlam / 2.0).sin().powi(2);
     2.0 * r * h.sqrt().asin()
 }
 
@@ -84,7 +83,12 @@ pub fn interpolate(a: &LatLonAlt, b: &LatLonAlt, t: f64) -> LatLonAlt {
 
 /// Destination point given start, initial bearing (rad) and distance (m)
 /// on the authalic sphere.
-pub fn destination(a: &LatLonAlt, bearing_rad: f64, distance: f64, ellipsoid: Ellipsoid) -> LatLonAlt {
+pub fn destination(
+    a: &LatLonAlt,
+    bearing_rad: f64,
+    distance: f64,
+    ellipsoid: Ellipsoid,
+) -> LatLonAlt {
     let r = ellipsoid.authalic_radius();
     let delta = distance / r;
     let (phi1, lam1) = (a.latitude_rad(), a.longitude_rad());
@@ -118,7 +122,11 @@ mod tests {
         assert!((d - 348_000.0).abs() < 5_000.0, "d={d}");
         let b = initial_bearing(&lhr, &cdg);
         // roughly south-east
-        assert!(b.to_degrees() > 100.0 && b.to_degrees() < 160.0, "bearing {}", b.to_degrees());
+        assert!(
+            b.to_degrees() > 100.0 && b.to_degrees() < 160.0,
+            "bearing {}",
+            b.to_degrees()
+        );
     }
 
     #[test]

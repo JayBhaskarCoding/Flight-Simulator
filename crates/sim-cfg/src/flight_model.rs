@@ -2,9 +2,7 @@
 //! `[PERFORMANCE]` typed loader.
 
 use crate::error::{CfgError, CfgResult};
-use crate::geometry::{
-    AirplaneGeometry, GAL_TO_M3, LB_TO_KG, FT_TO_M,
-};
+use crate::geometry::{AirplaneGeometry, FT_TO_M, GAL_TO_M3, LB_TO_KG};
 use crate::parser::{CfgFile, Section};
 
 /// Average gasoline density (6.0 lb/US gal) in kg/m³.
@@ -190,8 +188,8 @@ impl AeroCoefficients {
             return cl_lin + flap_cl;
         }
         // beyond stall: blend toward a flat-plate-like post-stall value
-        let cl_stall = (self.cl0 + self.cl_alpha * self.alpha_stall_rad).abs()
-            * self.post_stall_lift_factor;
+        let cl_stall =
+            (self.cl0 + self.cl_alpha * self.alpha_stall_rad).abs() * self.post_stall_lift_factor;
         let over = alpha_eff - self.alpha_stall_rad;
         let blend = (-over / self.alpha_stall_rad).exp();
         let mag = cl_stall * blend + (cl_lin.abs() * (1.0 - blend)) * 0.35;
@@ -549,7 +547,10 @@ mod tests {
         let e = FlightModelDocument::from_cfg(&cfg).unwrap_err();
         assert!(e.to_string().contains("static stability"), "{e}");
 
-        let bad = full_cfg().replace("directional_stability = 0.11", "directional_stability = -0.2");
+        let bad = full_cfg().replace(
+            "directional_stability = 0.11",
+            "directional_stability = -0.2",
+        );
         let cfg = CfgFile::parse(&bad, "fm.cfg").unwrap();
         let e = FlightModelDocument::from_cfg(&cfg).unwrap_err();
         assert!(e.to_string().contains("weathercock"), "{e}");

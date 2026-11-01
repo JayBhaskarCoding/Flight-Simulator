@@ -307,10 +307,13 @@ fn unescape(raw: &str, base: usize) -> Result<std::borrow::Cow<'_, str>, OsmErro
     while let Some(amp) = rest.find('&') {
         out.push_str(&rest[..amp]);
         let tail = &rest[amp..];
-        let semi = tail.find(';').filter(|&k| k <= 10).ok_or_else(|| OsmError::Xml {
-            message: "unterminated entity reference".into(),
-            offset: base + amp,
-        })?;
+        let semi = tail
+            .find(';')
+            .filter(|&k| k <= 10)
+            .ok_or_else(|| OsmError::Xml {
+                message: "unterminated entity reference".into(),
+                offset: base + amp,
+            })?;
         let entity = &tail[1..semi];
         match entity {
             "amp" => out.push('&'),
@@ -319,7 +322,9 @@ fn unescape(raw: &str, base: usize) -> Result<std::borrow::Cow<'_, str>, OsmErro
             "quot" => out.push('"'),
             "apos" => out.push('\''),
             _ => {
-                let cp = if let Some(hex) = entity.strip_prefix("#x").or_else(|| entity.strip_prefix("#X"))
+                let cp = if let Some(hex) = entity
+                    .strip_prefix("#x")
+                    .or_else(|| entity.strip_prefix("#X"))
                 {
                     u32::from_str_radix(hex, 16).ok()
                 } else if let Some(dec) = entity.strip_prefix('#') {
@@ -434,14 +439,7 @@ pub fn parse_osm(input: &str) -> Result<OsmMap, OsmError> {
                         let id = req_attr_i64(&attrs, "node", "id")?;
                         let lat = req_attr_f64(&attrs, "node", "lat")?;
                         let lon = req_attr_f64(&attrs, "node", "lon")?;
-                        map.nodes.insert(
-                            id,
-                            OsmNode {
-                                id,
-                                lat,
-                                lon,
-                            },
-                        );
+                        map.nodes.insert(id, OsmNode { id, lat, lon });
                     }
                     "way" => {
                         if cur_way.is_some() {
@@ -558,15 +556,14 @@ fn req_attr_i64(
     attr: &'static str,
 ) -> Result<i64, OsmError> {
     let raw = req_attr(attrs, element, attr)?;
-    raw.parse::<i64>()
-        .map_err(|_| OsmError::Number {
-            value: raw.to_string(),
-            what: match attr {
-                "id" => "id",
-                "ref" => "node ref",
-                _ => "integer attribute",
-            },
-        })
+    raw.parse::<i64>().map_err(|_| OsmError::Number {
+        value: raw.to_string(),
+        what: match attr {
+            "id" => "id",
+            "ref" => "node ref",
+            _ => "integer attribute",
+        },
+    })
 }
 
 fn req_attr_f64(
@@ -575,15 +572,14 @@ fn req_attr_f64(
     attr: &'static str,
 ) -> Result<f64, OsmError> {
     let raw = req_attr(attrs, element, attr)?;
-    raw.parse::<f64>()
-        .map_err(|_| OsmError::Number {
-            value: raw.to_string(),
-            what: match attr {
-                "lat" => "latitude",
-                "lon" => "longitude",
-                _ => "coordinate",
-            },
-        })
+    raw.parse::<f64>().map_err(|_| OsmError::Number {
+        value: raw.to_string(),
+        what: match attr {
+            "lat" => "latitude",
+            "lon" => "longitude",
+            _ => "coordinate",
+        },
+    })
 }
 
 fn parse_bounds(
@@ -747,8 +743,7 @@ impl Building {
         for i in 0..n {
             let (yi, xi) = self.points[i];
             let (yj, xj) = self.points[j];
-            let crosses = (yi > lat) != (yj > lat)
-                && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi;
+            let crosses = (yi > lat) != (yj > lat) && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi;
             if crosses {
                 inside = !inside;
             }
@@ -863,10 +858,7 @@ mod tests {
             <tag k="name" v="caf&#233; &#x1F600; &amp; co"/></way>
             <node id="1" lat="0" lon="0"/><node id="2" lat="0" lon="1"/></osm>"#;
         let map = parse_osm(input).unwrap();
-        assert_eq!(
-            map.ways[0].tag("name"),
-            Some("café \u{1F600} & co")
-        );
+        assert_eq!(map.ways[0].tag("name"), Some("café \u{1F600} & co"));
     }
 
     #[test]
@@ -889,7 +881,10 @@ mod tests {
         let bad_lat = r#"<osm><node id="1" lat="x" lon="0"/></osm>"#;
         assert!(matches!(
             parse_osm(bad_lat).unwrap_err(),
-            OsmError::Number { what: "latitude", .. }
+            OsmError::Number {
+                what: "latitude",
+                ..
+            }
         ));
 
         let stray_nd = r#"<osm><nd ref="1"/></osm>"#;
@@ -904,7 +899,8 @@ mod tests {
             OsmError::Xml { message, .. } if message.contains("unexpected end")
         ));
 
-        let one_node_way = r#"<osm><way id="1"><nd ref="1"/></way><node id="1" lat="0" lon="0"/></osm>"#;
+        let one_node_way =
+            r#"<osm><way id="1"><nd ref="1"/></way><node id="1" lat="0" lon="0"/></osm>"#;
         assert!(matches!(
             parse_osm(one_node_way).unwrap_err(),
             OsmError::Xml { message, .. } if message.contains("fewer than 2")

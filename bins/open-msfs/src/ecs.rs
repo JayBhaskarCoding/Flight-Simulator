@@ -20,13 +20,17 @@ pub struct Store<T> {
 
 impl<T> Default for Store<T> {
     fn default() -> Self {
-        Self { map: HashMap::new() }
+        Self {
+            map: HashMap::new(),
+        }
     }
 }
 
 impl<T> Store<T> {
     pub fn new() -> Self {
-        Self { map: HashMap::new() }
+        Self {
+            map: HashMap::new(),
+        }
     }
 
     pub fn insert(&mut self, e: Entity, value: T) -> Option<T> {
@@ -172,10 +176,27 @@ mod tests {
         let b = ecs.spawn();
         assert_ne!(a, b);
 
-        ecs.transform.insert(a, Transform { position: DVec3::ZERO, orientation: DQuat::IDENTITY });
+        ecs.transform.insert(
+            a,
+            Transform {
+                position: DVec3::ZERO,
+                orientation: DQuat::IDENTITY,
+            },
+        );
         ecs.aircraft.insert(a, Aircraft);
-        ecs.transform.insert(b, Transform { position: DVec3::X, orientation: DQuat::IDENTITY });
-        ecs.camera.insert(b, Camera { body_offset: DVec3::Y });
+        ecs.transform.insert(
+            b,
+            Transform {
+                position: DVec3::X,
+                orientation: DQuat::IDENTITY,
+            },
+        );
+        ecs.camera.insert(
+            b,
+            Camera {
+                body_offset: DVec3::Y,
+            },
+        );
 
         assert_eq!(ecs.aircraft_entities(), vec![a]);
         assert_eq!(ecs.camera_entities(), vec![b]);

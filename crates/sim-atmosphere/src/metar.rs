@@ -29,7 +29,11 @@ pub enum MetarError {
     /// A required group is missing.
     Missing { what: &'static str },
     /// A numeric field is malformed.
-    Number { index: usize, token: String, what: &'static str },
+    Number {
+        index: usize,
+        token: String,
+        what: &'static str,
+    },
 }
 
 impl fmt::Display for MetarError {
@@ -291,8 +295,14 @@ impl Metar {
             }
         }
         // 3. station
-        let station = *tokens.get(i).ok_or(MetarError::Missing { what: "station" })?;
-        if station.len() < 3 || station.len() > 5 || !station.chars().all(|c| c.is_ascii_alphanumeric()) || station.chars().any(|c| c.is_ascii_digit()) {
+        let station = *tokens
+            .get(i)
+            .ok_or(MetarError::Missing { what: "station" })?;
+        if station.len() < 3
+            || station.len() > 5
+            || !station.chars().all(|c| c.is_ascii_alphanumeric())
+            || station.chars().any(|c| c.is_ascii_digit())
+        {
             return Err(MetarError::Group {
                 index: gi,
                 message: format!("'{station}' is not a station identifier"),
@@ -301,7 +311,9 @@ impl Metar {
         i += 1;
         gi += 1;
         // 4. ddHHMMZ
-        let time_tok = *tokens.get(i).ok_or(MetarError::Missing { what: "observation time" })?;
+        let time_tok = *tokens.get(i).ok_or(MetarError::Missing {
+            what: "observation time",
+        })?;
         let (day_utc, hour_utc, minute_utc) = parse_time(time_tok, gi)?;
         i += 1;
         gi += 1;
@@ -433,7 +445,9 @@ impl Metar {
             }
         }
 
-        let temperature_c = temperature_c.ok_or(MetarError::Missing { what: "temperature" })?;
+        let temperature_c = temperature_c.ok_or(MetarError::Missing {
+            what: "temperature",
+        })?;
         let dewpoint_c = dewpoint_c.ok_or(MetarError::Missing { what: "dewpoint" })?;
 
         // CAVOK defaults
@@ -472,10 +486,7 @@ impl Metar {
     /// The temperature offset is measured against the ISA temperature at
     /// `field_elevation_m`; pressure comes from the `Q`/`A` group; RH is
     /// derived from temperature/dewpoint (Buck saturation curve).
-    pub fn isa_conditions(
-        &self,
-        field_elevation_m: f64,
-    ) -> (crate::isa::IsaConditions, f64) {
+    pub fn isa_conditions(&self, field_elevation_m: f64) -> (crate::isa::IsaConditions, f64) {
         use crate::isa::{saturation_vapour_pressure_pa, IsaConditions, IsaModel};
         let model = IsaModel::standard();
         let isa_t = model.at_geometric_m(field_elevation_m).temperature_k;
@@ -483,7 +494,11 @@ impl Metar {
         let sea_level_pressure = self.pressure_pa.unwrap_or(crate::isa::P0);
         let e_dew = saturation_vapour_pressure_pa(self.dewpoint_c as f64 + 273.15);
         let e_sat = saturation_vapour_pressure_pa(self.temperature_c as f64 + 273.15);
-        let rh = if e_sat > 0.0 { (e_dew / e_sat).clamp(0.0, 1.0) } else { 0.0 };
+        let rh = if e_sat > 0.0 {
+            (e_dew / e_sat).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
         (
             IsaConditions {
                 delta_t_k: measured_t - isa_t,
@@ -505,9 +520,10 @@ impl Metar {
 
     /// Lowest cloud base in feet (None when clear).
     pub fn lowest_cloud_base_ft(&self) -> Option<f64> {
-        self.clouds.iter().map(|l| l.base_ft).fold(None, |a: Option<f64>, b| {
-            Some(a.map_or(b, |v| v.min(b)))
-        })
+        self.clouds
+            .iter()
+            .map(|l| l.base_ft)
+            .fold(None, |a: Option<f64>, b| Some(a.map_or(b, |v| v.min(b))))
     }
 }
 
@@ -516,24 +532,36 @@ impl Metar {
 // ---------------------------------------------------------------------------
 
 fn parse_time(tok: &str, index: usize) -> MetarResult<(u8, u8, u8)> {
-    let t = tok
-        .strip_suffix('Z')
-        .ok_or(MetarError::Group { index, message: format!("time '{tok}' must end with Z") })?;
+    let t = tok.strip_suffix('Z').ok_or(MetarError::Group {
+        index,
+        message: format!("time '{tok}' must end with Z"),
+    })?;
     if t.len() != 6 || !t.chars().all(|c| c.is_ascii_digit()) {
-        return Err(MetarError::Number { index, token: tok.to_string(), what: "ddHHMMZ time" });
+        return Err(MetarError::Number {
+            index,
+            token: tok.to_string(),
+            what: "ddHHMMZ time",
+        });
     }
     let day: u8 = t[0..2].parse().unwrap();
     let hour: u8 = t[2..4].parse().unwrap();
     let minute: u8 = t[4..6].parse().unwrap();
     if day == 0 || day > 31 || hour > 23 || minute > 59 {
-        return Err(MetarError::Number { index, token: tok.to_string(), what: "ddHHMMZ time range" });
+        return Err(MetarError::Number {
+            index,
+            token: tok.to_string(),
+            what: "ddHHMMZ time range",
+        });
     }
     Ok((day, hour, minute))
 }
 
 fn parse_wind(tok: &str, index: usize) -> MetarResult<Wind> {
     if !tok.ends_with("KT") {
-        return Err(MetarError::Group { index, message: format!("wind '{tok}' must end with KT") });
+        return Err(MetarError::Group {
+            index,
+            message: format!("wind '{tok}' must end with KT"),
+        });
     }
     let core = &tok[..tok.len() - 2];
 
@@ -541,15 +569,27 @@ fn parse_wind(tok: &str, index: usize) -> MetarResult<Wind> {
         (None, rest)
     } else {
         if core.len() < 5 {
-            return Err(MetarError::Number { index, token: tok.to_string(), what: "wind group" });
+            return Err(MetarError::Number {
+                index,
+                token: tok.to_string(),
+                what: "wind group",
+            });
         }
         let d = &core[0..3];
         if !d.chars().all(|c| c.is_ascii_digit()) {
-            return Err(MetarError::Number { index, token: tok.to_string(), what: "wind direction" });
+            return Err(MetarError::Number {
+                index,
+                token: tok.to_string(),
+                what: "wind direction",
+            });
         }
         let dir: f64 = d.parse().unwrap();
         if dir >= 360.0 && dir != 360.0 {
-            return Err(MetarError::Number { index, token: tok.to_string(), what: "wind direction < 360" });
+            return Err(MetarError::Number {
+                index,
+                token: tok.to_string(),
+                what: "wind direction < 360",
+            });
         }
         (Some(if dir == 360.0 { 0.0 } else { dir }), &core[3..])
     };
@@ -560,7 +600,11 @@ fn parse_wind(tok: &str, index: usize) -> MetarResult<Wind> {
         None => (speed_part, None),
     };
     if speed_str.is_empty() || !speed_str.chars().all(|c| c.is_ascii_digit()) {
-        return Err(MetarError::Number { index, token: tok.to_string(), what: "wind speed" });
+        return Err(MetarError::Number {
+            index,
+            token: tok.to_string(),
+            what: "wind speed",
+        });
     }
     let speed_kt: f64 = speed_str.parse().unwrap();
     let gust_mps = match gust_str {
@@ -568,7 +612,11 @@ fn parse_wind(tok: &str, index: usize) -> MetarResult<Wind> {
             Some(g.parse::<f64>().unwrap() * KNOT_TO_MPS)
         }
         Some(_) => {
-            return Err(MetarError::Number { index, token: tok.to_string(), what: "gust speed" })
+            return Err(MetarError::Number {
+                index,
+                token: tok.to_string(),
+                what: "gust speed",
+            })
         }
         None => None,
     };
@@ -616,7 +664,10 @@ fn parse_rvr(tok: &str, index: usize) -> MetarResult<Rvr> {
     let (runway, rest) = body.split_at(slash);
     let rest = &rest[1..];
     if runway.is_empty() || !runway.chars().all(|c| c.is_ascii_alphanumeric()) {
-        return Err(MetarError::Group { index, message: format!("bad runway '{runway}'") });
+        return Err(MetarError::Group {
+            index,
+            message: format!("bad runway '{runway}'"),
+        });
     }
     // strip trend tendency letter (N/U/D) if present
     let rest = rest.trim_end_matches(['N', 'U', 'D']);
@@ -633,7 +684,11 @@ fn parse_rvr(tok: &str, index: usize) -> MetarResult<Rvr> {
             (s, false)
         };
         if beyond.0.is_empty() || !beyond.0.chars().all(|c| c.is_ascii_digit()) {
-            return Err(MetarError::Number { index, token: tok.to_string(), what: "RVR value" });
+            return Err(MetarError::Number {
+                index,
+                token: tok.to_string(),
+                what: "RVR value",
+            });
         }
         let v: f64 = beyond.0.parse().unwrap();
         // RVR in metres unless suffixed FT (handled by caller unit choice)
@@ -648,13 +703,19 @@ fn parse_rvr(tok: &str, index: usize) -> MetarResult<Rvr> {
         runway: runway.to_string(),
         min_m: min_v,
         max_m: max_v,
-        beyond_threshold: if min_beyond || max_beyond { Some(max_beyond) } else { None },
+        beyond_threshold: if min_beyond || max_beyond {
+            Some(max_beyond)
+        } else {
+            None
+        },
     })
 }
 
 /// Returns (metres, cavok, below_minima, tokens_consumed).
 fn parse_visibility(tokens: &[&str], index: usize) -> MetarResult<(f64, bool, bool, usize)> {
-    let tok = *tokens.first().ok_or(MetarError::Missing { what: "visibility" })?;
+    let tok = *tokens
+        .first()
+        .ok_or(MetarError::Missing { what: "visibility" })?;
     if tok == "CAVOK" {
         return Ok((10_000.0, true, false, 1));
     }
@@ -686,30 +747,50 @@ fn parse_visibility(tokens: &[&str], index: usize) -> MetarResult<(f64, bool, bo
         let v = if v == 9999.0 { 10_000.0 } else { v };
         return Ok((v, false, false, 1));
     }
-    Err(MetarError::Group { index, message: format!("cannot parse visibility '{tok}'") })
+    Err(MetarError::Group {
+        index,
+        message: format!("cannot parse visibility '{tok}'"),
+    })
 }
 
 fn parse_sm_part(s: &str, index: usize, tok: &str) -> MetarResult<f64> {
     if s.is_empty() || !s.chars().all(|c| c.is_ascii_digit()) {
-        return Err(MetarError::Number { index, token: tok.to_string(), what: "statute miles" });
+        return Err(MetarError::Number {
+            index,
+            token: tok.to_string(),
+            what: "statute miles",
+        });
     }
-    s.parse()
-        .map_err(|_| MetarError::Number { index, token: tok.to_string(), what: "statute miles" })
+    s.parse().map_err(|_| MetarError::Number {
+        index,
+        token: tok.to_string(),
+        what: "statute miles",
+    })
 }
 
 fn parse_sm_fraction(s: &str, index: usize, tok: &str) -> MetarResult<f64> {
     let parts: Vec<&str> = s.split('/').collect();
     if parts.len() != 2 {
-        return Err(MetarError::Group { index, message: format!("bad visibility fraction '{s}'") });
+        return Err(MetarError::Group {
+            index,
+            message: format!("bad visibility fraction '{s}'"),
+        });
     }
-    let n: f64 = parts[0]
-        .parse()
-        .map_err(|_| MetarError::Number { index, token: tok.to_string(), what: "fraction" })?;
-    let d: f64 = parts[1]
-        .parse()
-        .map_err(|_| MetarError::Number { index, token: tok.to_string(), what: "fraction" })?;
+    let n: f64 = parts[0].parse().map_err(|_| MetarError::Number {
+        index,
+        token: tok.to_string(),
+        what: "fraction",
+    })?;
+    let d: f64 = parts[1].parse().map_err(|_| MetarError::Number {
+        index,
+        token: tok.to_string(),
+        what: "fraction",
+    })?;
     if d == 0.0 {
-        return Err(MetarError::Group { index, message: "zero fraction denominator".into() });
+        return Err(MetarError::Group {
+            index,
+            message: "zero fraction denominator".into(),
+        });
     }
     Ok(n / d)
 }
@@ -719,24 +800,30 @@ fn is_temperature_token(t: &str) -> bool {
         return false;
     }
     let parts: Vec<&str> = t.split('/').collect();
-    parts.len() == 2 && parts.iter().all(|p| {
-        let p = p.strip_prefix('M').unwrap_or(p);
-        !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()) && p.len() <= 2
-    })
+    parts.len() == 2
+        && parts.iter().all(|p| {
+            let p = p.strip_prefix('M').unwrap_or(p);
+            !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()) && p.len() <= 2
+        })
 }
 
 fn parse_temperatures(t: &str, index: usize) -> MetarResult<(i8, i8)> {
     let parse1 = |s: &str| -> MetarResult<i8> {
         let neg = s.starts_with('M');
         let digits = s.strip_prefix('M').unwrap_or(s);
-        let v: i8 = digits
-            .parse()
-            .map_err(|_| MetarError::Number { index, token: t.to_string(), what: "temperature" })?;
+        let v: i8 = digits.parse().map_err(|_| MetarError::Number {
+            index,
+            token: t.to_string(),
+            what: "temperature",
+        })?;
         Ok(if neg { -v } else { v })
     };
     let parts: Vec<&str> = t.split('/').collect();
     if parts.len() != 2 {
-        return Err(MetarError::Group { index, message: format!("bad temperatures '{t}'") });
+        return Err(MetarError::Group {
+            index,
+            message: format!("bad temperatures '{t}'"),
+        });
     }
     Ok((parse1(parts[0])?, parse1(parts[1])?))
 }
@@ -785,7 +872,11 @@ fn parse_cloud(t: &str, index: usize) -> MetarResult<Option<CloudLayer>> {
         _ => return Ok(None),
     };
     if rest.len() != 3 || !rest.chars().all(|c| c.is_ascii_digit()) {
-        return Err(MetarError::Number { index, token: t.to_string(), what: "cloud base height" });
+        return Err(MetarError::Number {
+            index,
+            token: t.to_string(),
+            what: "cloud base height",
+        });
     }
     let base_ft: f64 = rest.parse().unwrap();
     Ok(Some(CloudLayer {
@@ -800,7 +891,10 @@ fn looks_like_weather(t: &str) -> bool {
     if t.is_empty() {
         return false;
     }
-    let body = t.strip_prefix('-').or_else(|| t.strip_prefix('+')).unwrap_or(t);
+    let body = t
+        .strip_prefix('-')
+        .or_else(|| t.strip_prefix('+'))
+        .unwrap_or(t);
     let body = body.strip_prefix("VC").unwrap_or(body);
     if body.is_empty() {
         return false;
@@ -812,8 +906,8 @@ fn looks_like_weather(t: &str) -> bool {
 }
 
 const WEATHER_TOKENS: &[&str] = &[
-    "MI", "PR", "BC", "DR", "BL", "SH", "TS", "FZ", "DZ", "RA", "SN", "SG", "IC", "PL", "GR",
-    "GS", "UP", "FG", "BR", "DU", "SA", "HZ", "FU", "VA", "PY",
+    "MI", "PR", "BC", "DR", "BL", "SH", "TS", "FZ", "DZ", "RA", "SN", "SG", "IC", "PL", "GR", "GS",
+    "UP", "FG", "BR", "DU", "SA", "HZ", "FU", "VA", "PY",
 ];
 
 fn descriptor_of(pair: &str) -> Option<Descriptor> {
@@ -911,9 +1005,17 @@ fn parse_weather(t: &str, index: usize) -> MetarResult<WeatherPhenomenon> {
         i += 2;
     }
     if phenomena.is_empty() && descriptor.is_none() && !vicinity {
-        return Err(MetarError::Group { index, message: format!("empty weather group '{t}'") });
+        return Err(MetarError::Group {
+            index,
+            message: format!("empty weather group '{t}'"),
+        });
     }
-    Ok(WeatherPhenomenon { intensity, descriptor, phenomena, vicinity })
+    Ok(WeatherPhenomenon {
+        intensity,
+        descriptor,
+        phenomena,
+        vicinity,
+    })
 }
 
 fn parse_recent(t: &str, index: usize) -> MetarResult<Option<RecentWeather>> {
@@ -931,20 +1033,32 @@ fn parse_recent(t: &str, index: usize) -> MetarResult<Option<RecentWeather>> {
     if phen.len() % 2 != 0 || phen.is_empty() {
         return Ok(None);
     }
-    let hour: u8 = time[0..2]
-        .parse()
-        .map_err(|_| MetarError::Number { index, token: t.to_string(), what: "recent weather time" })?;
-    let minute: u8 = time[2..4]
-        .parse()
-        .map_err(|_| MetarError::Number { index, token: t.to_string(), what: "recent weather time" })?;
+    let hour: u8 = time[0..2].parse().map_err(|_| MetarError::Number {
+        index,
+        token: t.to_string(),
+        what: "recent weather time",
+    })?;
+    let minute: u8 = time[2..4].parse().map_err(|_| MetarError::Number {
+        index,
+        token: t.to_string(),
+        what: "recent weather time",
+    })?;
     if hour > 23 || minute > 59 {
-        return Err(MetarError::Number { index, token: t.to_string(), what: "recent weather time range" });
+        return Err(MetarError::Number {
+            index,
+            token: t.to_string(),
+            what: "recent weather time range",
+        });
     }
     let p = phenomenon_of(&phen[..2]).ok_or(MetarError::Group {
         index,
         message: format!("unknown recent phenomenon '{phen}'"),
     })?;
-    Ok(Some(RecentWeather { phenomenon: p, hour_utc: hour, minute_utc: minute }))
+    Ok(Some(RecentWeather {
+        phenomenon: p,
+        hour_utc: hour,
+        minute_utc: minute,
+    }))
 }
 
 #[cfg(test)]
@@ -987,11 +1101,14 @@ mod tests {
 
     #[test]
     fn parses_statute_mile_visibility() {
-        let m = Metar::parse(
-            "METAR KJFK 121151Z 09008KT 1 1/2SM BR OVC007 12/11 A2989 RMK AO2 SLP118",
-        )
-        .unwrap();
-        assert!((m.visibility_m - 1.5 * SM_TO_M).abs() < 1e-6, "{}", m.visibility_m);
+        let m =
+            Metar::parse("METAR KJFK 121151Z 09008KT 1 1/2SM BR OVC007 12/11 A2989 RMK AO2 SLP118")
+                .unwrap();
+        assert!(
+            (m.visibility_m - 1.5 * SM_TO_M).abs() < 1e-6,
+            "{}",
+            m.visibility_m
+        );
         assert_eq!(m.weather[0].phenomena, vec![Phenomenon::Mist]);
         assert_eq!(m.clouds[0].base_ft, 700.0);
         // A2989 = 29.89 inHg
@@ -1019,19 +1136,14 @@ mod tests {
 
     #[test]
     fn parses_complex_weather_groups() {
-        let m = Metar::parse(
-            "METAR CCCC 121000Z 27010KT 2000 -SN BKN012 M02/M04 Q0998",
-        )
-        .unwrap();
+        let m = Metar::parse("METAR CCCC 121000Z 27010KT 2000 -SN BKN012 M02/M04 Q0998").unwrap();
         let w = &m.weather[0];
         assert_eq!(w.intensity, Intensity::Light);
         assert_eq!(w.descriptor, None);
         assert_eq!(w.phenomena, vec![Phenomenon::Snow]);
 
-        let m2 = Metar::parse(
-            "METAR DDDD 121000Z 27010KT 4000 +TSRA SCT020CB 15/11 Q1010",
-        )
-        .unwrap();
+        let m2 =
+            Metar::parse("METAR DDDD 121000Z 27010KT 4000 +TSRA SCT020CB 15/11 Q1010").unwrap();
         let w2 = &m2.weather[0];
         assert_eq!(w2.intensity, Intensity::Heavy);
         assert_eq!(w2.descriptor, Some(Descriptor::Thunderstorm));

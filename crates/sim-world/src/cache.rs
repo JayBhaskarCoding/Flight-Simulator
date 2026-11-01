@@ -369,15 +369,7 @@ mod tests {
     use super::*;
 
     fn key(kind: TileKind, face: u8, level: u8, x: u32, y: u32) -> CacheKey {
-        CacheKey::new(
-            kind,
-            TileId {
-                face,
-                level,
-                x,
-                y,
-            },
-        )
+        CacheKey::new(kind, TileId { face, level, x, y })
     }
 
     #[test]
@@ -527,10 +519,8 @@ mod tests {
 
     #[test]
     fn file_cache_persists_across_reopen() {
-        let dir = std::env::temp_dir().join(format!(
-            "sim-world-cache-persist-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("sim-world-cache-persist-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let path = dir.join("nested").join("tiles.db");
 

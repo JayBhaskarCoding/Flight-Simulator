@@ -20,7 +20,7 @@ pub mod opensimconnect;
 pub mod pid;
 pub mod simvar;
 
-pub use autopilot::{ApMode, Autopilot, AutopilotConfig, ApOutput, ApSample};
+pub use autopilot::{ApMode, ApOutput, ApSample, Autopilot, AutopilotConfig};
 pub use gauge::{GaugeError, GaugeHost, GaugeInstance};
 pub use opensimconnect::{OpenSimConnectError, OpenSimConnectServer, DEFAULT_PORT};
 pub use pid::{Pid, PidConfig, PidGains};

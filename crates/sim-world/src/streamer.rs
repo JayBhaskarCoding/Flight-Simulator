@@ -343,7 +343,8 @@ impl<S: TileSource> Worker<S> {
     }
 
     fn collect_stats(&self) -> StreamerStats {
-        let (resident_available, resident_unavailable, resident_bytes) = match self.resident.read() {
+        let (resident_available, resident_unavailable, resident_bytes) = match self.resident.read()
+        {
             Ok(g) => {
                 let mut a = 0usize;
                 let mut u = 0usize;
@@ -372,13 +373,7 @@ impl<S: TileSource> Worker<S> {
         }
     }
 
-    fn handle_request(
-        &mut self,
-        kind: TileKind,
-        id: TileId,
-        priority: i32,
-        reply: Option<Waiter>,
-    ) {
+    fn handle_request(&mut self, kind: TileKind, id: TileId, priority: i32, reply: Option<Waiter>) {
         let key = (kind, id);
         let state = self
             .resident
@@ -635,9 +630,7 @@ mod tests {
             Box::pin(async move {
                 self.calls.fetch_add(1, Ordering::SeqCst);
                 if self.fail.load(Ordering::SeqCst) {
-                    return Err(WorldError::Io(std::io::Error::other(
-                        "simulated outage",
-                    )));
+                    return Err(WorldError::Io(std::io::Error::other("simulated outage")));
                 }
                 Ok(self.table.get(&(kind, id)).cloned())
             })
@@ -675,7 +668,10 @@ mod tests {
         assert!(!first.from_cache);
         assert!(matches!(
             s.resident_state(TileKind::Dem, tile(1)),
-            Some(ResidentState::Available { bytes: 64, priority: 5 })
+            Some(ResidentState::Available {
+                bytes: 64,
+                priority: 5
+            })
         ));
 
         let second = s.fetch(TileKind::Dem, tile(1), 5).await.unwrap();
@@ -860,10 +856,8 @@ mod tests {
 
     #[tokio::test]
     async fn cold_streamer_replays_warm_cache_without_source() {
-        let dir = std::env::temp_dir().join(format!(
-            "sim-world-streamer-warm-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("sim-world-streamer-warm-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let path = dir.join("warm.db");
 

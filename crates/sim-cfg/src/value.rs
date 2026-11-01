@@ -159,7 +159,10 @@ mod tests {
 
     #[test]
     fn parses_quoted_and_text() {
-        assert_eq!(Value::parse("\"Cessna 172S\""), Value::Text("Cessna 172S".into()));
+        assert_eq!(
+            Value::parse("\"Cessna 172S\""),
+            Value::Text("Cessna 172S".into())
+        );
         assert_eq!(Value::parse("TRUE"), Value::Text("TRUE".into()));
         assert!(Value::parse("TRUE").as_bool("k", 1, "f").unwrap());
         assert!(!Value::parse("off").as_bool("k", 1, "f").unwrap());
@@ -168,8 +171,13 @@ mod tests {
 
     #[test]
     fn type_errors_carry_context() {
-        let e = Value::parse("abc").as_f64("wing_area", 12, "fm.cfg").unwrap_err();
+        let e = Value::parse("abc")
+            .as_f64("wing_area", 12, "fm.cfg")
+            .unwrap_err();
         let s = e.to_string();
-        assert!(s.contains("wing_area") && s.contains("12") && s.contains("fm.cfg"), "{s}");
+        assert!(
+            s.contains("wing_area") && s.contains("12") && s.contains("fm.cfg"),
+            "{s}"
+        );
     }
 }

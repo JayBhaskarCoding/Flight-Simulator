@@ -3,13 +3,13 @@
 //! cleanly when the sandbox has no adapter.
 
 use glam::{DQuat, DVec3, Mat4, Quat, Vec3};
+use sim_atmosphere::sky::{SkyLuts, SkyParams};
+use sim_geo::{Ecef, FloatingOrigin, LatLonAlt, WGS84};
 use sim_render::gltf::{parse_bytes, AlphaMode};
 use sim_render::graph::{FrameInput, ModelHandle, Renderer};
 use sim_render::shaders;
 use sim_render::types::{CloudUniforms, DrawItem};
 use sim_render::{generate_noise_volume, LutPayloads};
-use sim_atmosphere::sky::{SkyLuts, SkyParams};
-use sim_geo::{Ecef, FloatingOrigin, LatLonAlt, WGS84};
 
 // ---------------------------------------------------------------------------
 // helpers: build a complete GLB in memory
@@ -19,12 +19,24 @@ fn base64_encode(data: &[u8]) -> String {
     const ALPH: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
-        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
         let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
         out.push(ALPH[(n >> 18) as usize & 63] as char);
         out.push(ALPH[(n >> 12) as usize & 63] as char);
-        out.push(if chunk.len() > 1 { ALPH[(n >> 6) as usize & 63] as char } else { '=' });
-        out.push(if chunk.len() > 2 { ALPH[n as usize & 63] as char } else { '=' });
+        out.push(if chunk.len() > 1 {
+            ALPH[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            ALPH[n as usize & 63] as char
+        } else {
+            '='
+        });
     }
     out
 }
@@ -161,7 +173,11 @@ fn glb_roundtrip_builds_hierarchy_material_and_geometry() {
     let inst = &model.instances[0];
     assert_eq!(inst.mesh, 0);
     let t = inst.world.w_axis.truncate();
-    assert_eq!(t, Vec3::new(0.0, 2.0, 0.0), "child transform not applied to mesh-less node");
+    assert_eq!(
+        t,
+        Vec3::new(0.0, 2.0, 0.0),
+        "child transform not applied to mesh-less node"
+    );
 }
 
 #[test]
@@ -350,8 +366,7 @@ fn draws_from_gltf_rebases_in_f64_before_narrowing() {
     // ECEF offset for exactness: +Z direction is close to east here;
     // use an exact offset vector instead)
     let root_pos = cam_ecef.as_dvec3() + DVec3::new(0.0, 100.0, 0.0);
-    let draws =
-        Renderer::draws_from_gltf(&model, &origin, root_pos, DQuat::IDENTITY, DVec3::ONE);
+    let draws = Renderer::draws_from_gltf(&model, &origin, root_pos, DQuat::IDENTITY, DVec3::ONE);
     assert_eq!(draws.len(), 1);
     // translation column = root − camera + node translation (0,2,0)
     // = (0, 102, 0), narrowed last
@@ -368,9 +383,37 @@ fn draws_from_gltf_rebases_in_f64_before_narrowing() {
         Ecef::from(cam_ecef.as_dvec3() + DVec3::new(0.0, 10.0, 0.0)),
         DQuat::IDENTITY,
     );
-    let draws2 =
-        Renderer::draws_from_gltf(&model, &origin2, root_pos, DQuat::IDENTITY, DVec3::ONE);
+    let draws2 = Renderer::draws_from_gltf(&model, &origin2, root_pos, DQuat::IDENTITY, DVec3::ONE);
     assert!((draws2[0].model[3][1] - 92.0).abs() < 1e-3);
+}
+
+#[test]
+fn combined_model_ranges_keep_independent_world_roots() {
+    let mut model = parse_bytes(&build_glb()).expect("glb");
+    model.instances.push(model.instances[0].clone());
+    let origin = FloatingOrigin::new(Ecef::from(DVec3::ZERO), DQuat::IDENTITY);
+    let aircraft = Renderer::draws_from_gltf_range(
+        &model,
+        0..1,
+        &origin,
+        DVec3::new(1.0, 0.0, 0.0),
+        DQuat::IDENTITY,
+        DVec3::ONE,
+    );
+    let terrain = Renderer::draws_from_gltf_range(
+        &model,
+        1..2,
+        &origin,
+        DVec3::new(0.0, 100.0, 0.0),
+        DQuat::IDENTITY,
+        DVec3::ONE,
+    );
+    assert_eq!(aircraft.len(), 1);
+    assert_eq!(terrain.len(), 1);
+    assert_eq!(aircraft[0].mesh, terrain[0].mesh);
+    assert!((aircraft[0].model[3][0] - 1.0).abs() < 1e-6);
+    // The fixture's parent node contributes its authored +2m Y offset.
+    assert!((terrain[0].model[3][1] - 102.0).abs() < 1e-6);
 }
 
 #[test]
@@ -418,8 +461,7 @@ fn renderer_headless_frame_or_skip() {
     let luts = SkyLuts::new(&SkyParams::default());
     renderer.set_sky_luts(&luts);
 
-    let (target_tex, view) =
-        renderer.create_target(wgpu::TextureFormat::Bgra8UnormSrgb, 64, 64);
+    let (target_tex, view) = renderer.create_target(wgpu::TextureFormat::Bgra8UnormSrgb, 64, 64);
     let frame = FrameInput {
         view: Mat4::IDENTITY,
         proj: Mat4::perspective_rh(std::f32::consts::FRAC_PI_4, 1.0, 0.1, 1e7),
@@ -446,8 +488,10 @@ fn renderer_headless_frame_or_skip() {
     let _ = target_tex;
 
     // a non-sRGB target is rejected
-    let (_, plain_view) =
-        renderer.create_target(wgpu::TextureFormat::Rgba8Unorm, 4, 4);
+    let (_, plain_view) = renderer.create_target(wgpu::TextureFormat::Rgba8Unorm, 4, 4);
     let err = renderer.render(&plain_view, wgpu::TextureFormat::Rgba8Unorm, &frame);
-    assert!(matches!(err, Err(sim_render::DrawError::UnsupportedTarget(_))));
+    assert!(matches!(
+        err,
+        Err(sim_render::DrawError::UnsupportedTarget(_))
+    ));
 }

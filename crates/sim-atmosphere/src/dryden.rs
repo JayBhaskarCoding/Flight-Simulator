@@ -124,7 +124,13 @@ impl DrydenConfig {
         step_s: f64,
         seed: u64,
     ) -> Self {
-        Self { airspeed_mps, height_m, intensity, step_s, seed }
+        Self {
+            airspeed_mps,
+            height_m,
+            intensity,
+            step_s,
+            seed,
+        }
     }
 }
 
@@ -147,11 +153,20 @@ fn expm2(a: M2) -> M2 {
         let (ch, factor) = if d.abs() < 1e-12 {
             (1.0, 1.0)
         } else {
-            ((d.exp() + (-d).exp()) / 2.0, (d.exp() - (-d).exp()) / (2.0 * d))
+            (
+                (d.exp() + (-d).exp()) / 2.0,
+                (d.exp() - (-d).exp()) / (2.0 * d),
+            )
         };
         [
-            [es * (ch + a_shift[0][0] * factor), es * (a_shift[0][1] * factor)],
-            [es * (a_shift[1][0] * factor), es * (ch + a_shift[1][1] * factor)],
+            [
+                es * (ch + a_shift[0][0] * factor),
+                es * (a_shift[0][1] * factor),
+            ],
+            [
+                es * (a_shift[1][0] * factor),
+                es * (ch + a_shift[1][1] * factor),
+            ],
         ]
     } else {
         let d = (-delta_sq).sqrt();
@@ -161,8 +176,14 @@ fn expm2(a: M2) -> M2 {
             (d.cos(), d.sin() / d)
         };
         [
-            [es * (c + a_shift[0][0] * factor), es * (a_shift[0][1] * factor)],
-            [es * (a_shift[1][0] * factor), es * (c + a_shift[1][1] * factor)],
+            [
+                es * (c + a_shift[0][0] * factor),
+                es * (a_shift[0][1] * factor),
+            ],
+            [
+                es * (a_shift[1][0] * factor),
+                es * (c + a_shift[1][1] * factor),
+            ],
         ]
     }
 }
@@ -173,7 +194,10 @@ fn inv2(a: M2) -> Option<M2> {
         return None;
     }
     let inv = 1.0 / det;
-    Some([[a[1][1] * inv, -a[0][1] * inv], [-a[1][0] * inv, a[0][0] * inv]])
+    Some([
+        [a[1][1] * inv, -a[0][1] * inv],
+        [-a[1][0] * inv, a[0][0] * inv],
+    ])
 }
 
 fn m2_mul(a: M2, b: M2) -> M2 {
@@ -308,11 +332,19 @@ fn second_order(sigma: f64, length_m: f64, velocity_mps: f64, h: f64) -> SecondO
     ];
 
     // discrete stationary covariance: P = Phi P Phiᵀ + gamma gammaᵀ
-    let q: M2 = [[gamma[0] * gamma[0], gamma[0] * gamma[1]], [gamma[1] * gamma[0], gamma[1] * gamma[1]]];
+    let q: M2 = [
+        [gamma[0] * gamma[0], gamma[0] * gamma[1]],
+        [gamma[1] * gamma[0], gamma[1] * gamma[1]],
+    ];
     let p_unit = discrete_lyapunov(phi, q);
 
     // scale the noise so the output variance equals sigma² exactly
-    let mut so = SecondOrder { phi, gamma, p: p_unit, c };
+    let mut so = SecondOrder {
+        phi,
+        gamma,
+        p: p_unit,
+        c,
+    };
     let os = so.output_sigma().max(1e-30);
     let scale = sigma / os;
     so.gamma = [gamma[0] * scale, gamma[1] * scale];
@@ -344,7 +376,9 @@ impl Xoshiro256 {
             x = (x ^ (x >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
             x ^ (x >> 31)
         };
-        Self { s: [next(), next(), next(), next()] }
+        Self {
+            s: [next(), next(), next(), next()],
+        }
     }
 
     fn next_u64(&mut self) -> u64 {
@@ -510,7 +544,10 @@ impl DrydenTurbulence {
             -gust.y / v_airspeed, // delta beta
             0.0,
         );
-        TurbulenceState { gust_mps: gust, angle_perturbation_rad: angles }
+        TurbulenceState {
+            gust_mps: gust,
+            angle_perturbation_rad: angles,
+        }
     }
 
     /// Restart from zero state with a fresh seed.
@@ -554,7 +591,9 @@ mod tests {
         assert_eq!(TurbulenceIntensity::Light.sigma_w_mps(), 1.7);
         assert_eq!(TurbulenceIntensity::Moderate.sigma_w_mps(), 3.7);
         assert_eq!(TurbulenceIntensity::Severe.sigma_w_mps(), 7.5);
-        assert!(TurbulenceIntensity::Severe.sigma_u_mps() > TurbulenceIntensity::Light.sigma_u_mps());
+        assert!(
+            TurbulenceIntensity::Severe.sigma_u_mps() > TurbulenceIntensity::Light.sigma_u_mps()
+        );
     }
 
     #[test]
@@ -639,10 +678,7 @@ mod tests {
             (var_u - target_u).abs() / target_u < 0.15,
             "sigma_u {var_u} vs {target_u}"
         );
-        assert!(
-            (var_w - 3.7).abs() / 3.7 < 0.12,
-            "sigma_w {var_w} vs 3.7"
-        );
+        assert!((var_w - 3.7).abs() / 3.7 < 0.12, "sigma_w {var_w} vs 3.7");
     }
 
     #[test]
@@ -672,7 +708,11 @@ mod tests {
 
     #[test]
     fn zero_turbulence_is_quiet() {
-        let scales = DrydenScales { longitudinal_m: 500.0, lateral_m: 500.0, vertical_m: 500.0 };
+        let scales = DrydenScales {
+            longitudinal_m: 500.0,
+            lateral_m: 500.0,
+            vertical_m: 500.0,
+        };
         let sigma = DVec3::ZERO;
         let mut t = DrydenTurbulence::with_scales(60.0, sigma, scales, 0.01, 1);
         for _ in 0..1000 {

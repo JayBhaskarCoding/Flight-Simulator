@@ -23,10 +23,7 @@ pub enum CfgError {
         found: String,
     },
     /// A section required by a typed loader is absent.
-    MissingSection {
-        file: String,
-        section: String,
-    },
+    MissingSection { file: String, section: String },
     /// A key required by a typed loader is absent or empty.
     MissingKey {
         file: String,
@@ -51,7 +48,11 @@ pub enum CfgError {
 
 impl CfgError {
     pub(crate) fn syntax(file: &str, line: usize, message: impl Into<String>) -> Self {
-        Self::Syntax { file: file.to_string(), line, message: message.into() }
+        Self::Syntax {
+            file: file.to_string(),
+            line,
+            message: message.into(),
+        }
     }
 }
 
@@ -59,10 +60,20 @@ impl std::fmt::Display for CfgError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Io { path, source } => write!(f, "cannot read {path}: {source}"),
-            Self::Syntax { file, line, message } => {
+            Self::Syntax {
+                file,
+                line,
+                message,
+            } => {
                 write!(f, "{file}:{line}: syntax error: {message}")
             }
-            Self::Type { file, line, key, expected, found } => write!(
+            Self::Type {
+                file,
+                line,
+                key,
+                expected,
+                found,
+            } => write!(
                 f,
                 "{file}:{line}: key '{key}' expects {expected}, found '{found}'"
             ),
@@ -73,10 +84,20 @@ impl std::fmt::Display for CfgError {
                 f,
                 "{file}: section [{section}] is missing required key '{key}'"
             ),
-            Self::Range { file, line, key, message } => {
+            Self::Range {
+                file,
+                line,
+                key,
+                message,
+            } => {
                 write!(f, "{file}:{line}: key '{key}': {message}")
             }
-            Self::IndexGap { file, section, key, expected } => write!(
+            Self::IndexGap {
+                file,
+                section,
+                key,
+                expected,
+            } => write!(
                 f,
                 "{file}: section [{section}]: indexed key '{key}' should have {expected}"
             ),

@@ -179,12 +179,12 @@ mod tests {
         let cases = [
             (0.0, 0.0, 0.0),
             (0.0, 90.0, 1000.0),
-            (45.0, -73.5, 40.0),      // Montréal
-            (-33.9, 151.2, 20.0),     // Sydney
-            (89.9, 10.0, 100.0),      // near north pole
-            (-89.9, -160.0, 5000.0),  // near south pole
-            (0.0, 179.9, -100.0),     // trench
-            (60.0, 24.9, 50.0),       // Helsinki
+            (45.0, -73.5, 40.0),     // Montréal
+            (-33.9, 151.2, 20.0),    // Sydney
+            (89.9, 10.0, 100.0),     // near north pole
+            (-89.9, -160.0, 5000.0), // near south pole
+            (0.0, 179.9, -100.0),    // trench
+            (60.0, 24.9, 50.0),      // Helsinki
         ];
         for (lat, lon, alt) in cases {
             let llh = LatLonAlt::from_degrees(lat, lon, alt);
@@ -204,10 +204,21 @@ mod tests {
 
     #[test]
     fn roundtrip_extreme_altitudes() {
-        for alt in [-11_000.0, 0.0, 88_488.0, 400_000.0, 36_000_000.0, 200_000_000.0] {
+        for alt in [
+            -11_000.0,
+            0.0,
+            88_488.0,
+            400_000.0,
+            36_000_000.0,
+            200_000_000.0,
+        ] {
             let llh = LatLonAlt::from_degrees(37.7, -122.4, alt);
             let back = WGS84.ecef_to_geodetic(&WGS84.geodetic_to_ecef(&llh));
-            assert!((back.altitude_m() - alt).abs() < 1e-3, "alt {alt} -> {}", back.altitude_m());
+            assert!(
+                (back.altitude_m() - alt).abs() < 1e-3,
+                "alt {alt} -> {}",
+                back.altitude_m()
+            );
             assert!((back.latitude_deg() - 37.7).abs() < 1e-7);
             assert!((back.longitude_deg() + 122.4).abs() < 1e-7);
         }
@@ -231,7 +242,10 @@ mod tests {
     fn prime_vertical_at_poles_is_infinite_limit() {
         // N(90°) = a / sqrt(1 - e²) is finite; meridian curvature too.
         let n = WGS84.prime_vertical_radius(std::f64::consts::FRAC_PI_2);
-        assert!((n - WGS84.semi_major_axis / (1.0 - WGS84.first_eccentricity_squared()).sqrt()).abs() < 1e-6);
+        assert!(
+            (n - WGS84.semi_major_axis / (1.0 - WGS84.first_eccentricity_squared()).sqrt()).abs()
+                < 1e-6
+        );
     }
 
     #[test]

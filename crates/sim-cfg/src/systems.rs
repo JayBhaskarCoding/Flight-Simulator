@@ -157,7 +157,12 @@ impl SystemsDefinition {
             });
         }
 
-        Ok(Self { electrical, brakes, controls, vacuum })
+        Ok(Self {
+            electrical,
+            brakes,
+            controls,
+            vacuum,
+        })
     }
 }
 

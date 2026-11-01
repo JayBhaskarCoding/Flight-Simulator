@@ -37,7 +37,12 @@ impl NoiseVolume {
         let n = self.size;
         let i = (((z % n) * n + (y % n)) * n + (x % n)) as usize;
         let o = i * 4;
-        [self.data[o], self.data[o + 1], self.data[o + 2], self.data[o + 3]]
+        [
+            self.data[o],
+            self.data[o + 1],
+            self.data[o + 2],
+            self.data[o + 3],
+        ]
     }
 }
 
@@ -210,7 +215,10 @@ fn worley01(x: f32, y: f32, z: f32, cells: i32, seed: u32) -> f32 {
 /// the domain so the volume tiles without seams).
 pub fn generate_noise_volume(size: u32, seed: u32) -> NoiseVolume {
     assert!(size >= 8, "noise volume must be at least 8³");
-    assert!(size.is_power_of_two(), "noise volume size must be a power of two");
+    assert!(
+        size.is_power_of_two(),
+        "noise volume size must be a power of two"
+    );
     let n = size as usize;
     let inv = 1.0 / size as f32;
     let mut data = Vec::with_capacity(n * n * n * 4);
@@ -291,7 +299,10 @@ mod tests {
         let r: Vec<u8> = v.data.iter().step_by(4).copied().collect();
         let min = *r.iter().min().unwrap();
         let max = *r.iter().max().unwrap();
-        assert!(min < 250 && max > 5, "shape channel too flat: [{min}, {max}]");
+        assert!(
+            min < 250 && max > 5,
+            "shape channel too flat: [{min}, {max}]"
+        );
         // g/b/a detail channels must vary as well
         for (ch, stride) in [(1usize, 4usize), (2, 4), (3, 4)] {
             let vals: Vec<u8> = v.data.iter().skip(ch).step_by(stride).copied().collect();
